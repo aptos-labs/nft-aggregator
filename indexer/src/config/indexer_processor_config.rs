@@ -3,9 +3,8 @@ use aptos_indexer_processor_sdk::aptos_indexer_transaction_stream::TransactionSt
 use aptos_indexer_processor_sdk_server_framework::RunnableConfig;
 use serde::{Deserialize, Serialize};
 
-use crate::indexers::contract_upgrade_indexer::processor::ContractUpgradeProcessor;
-
 use super::processor_config::ProcessorConfig;
+use crate::indexers::contract_upgrade_indexer::processor::ContractUpgradeProcessor;
 
 pub const QUERY_DEFAULT_RETRIES: u32 = 5;
 pub const QUERY_DEFAULT_RETRY_DELAY_MS: u64 = 500;
@@ -61,6 +60,7 @@ impl DbConfig {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CustomConfig {
     ContractUpgradeIndexer(Vec<String>),
     MarketplaceIndexer(String),

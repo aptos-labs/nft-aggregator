@@ -118,14 +118,14 @@ Authorize docker to push to Artifact Registry. Please update the region to your 
 
 ```sh
 # update us-west2 to your region, you can find it in google cloud
-gcloud auth configure-docker us-west2-docker.pkg.dev
+gcloud auth configure-docker us-west1-docker.pkg.dev
 ```
 
 Tag the docker image.
 
 ```sh
 # update us-west2 to your region, you can find it in google cloud
-docker tag indexer us-west2-docker.pkg.dev/google-cloud-project-id/repo-name/indexer
+docker tag indexer us-west1-docker.pkg.dev/google-cloud-project-id/repo-name/indexer
 ```
 
 Push to the Artifact Registry.
