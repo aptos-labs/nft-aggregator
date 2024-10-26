@@ -177,14 +177,13 @@ impl ContractUpgradeChange {
                     package
                         .modules
                         .iter()
-                        .map(|module| {
+                        .filter_map(|module| {
+                            // If raw module is missing, it means the module is not changed
+                            // This happens when developer published a new package at the same address
+                            // All the modules from the previous package are unchanged but still in the write set change
                             let raw_module = raw_module_changes
-                                .get(&(package_address.clone(), module.name.clone()))
-                                .unwrap_or_else(|| {
-                                    panic!("Module bytecode not found for module {}", module.name)
-                                });
-
-                            ModuleUpgrade {
+                                .get(&(package_address.clone(), module.name.clone()));
+                            raw_module.map(|raw_module| ModuleUpgrade {
                                 module_addr: package_address.clone(),
                                 module_name: module.name.clone(),
                                 upgrade_number: package.upgrade_number.parse().unwrap(),
@@ -197,7 +196,7 @@ impl ContractUpgradeChange {
                                         panic!("Module abi is missing for module {}", module.name)
                                     })),
                                 tx_version: txn_version,
-                            }
+                            })
                         })
                         .collect::<Vec<ModuleUpgrade>>()
                 })
