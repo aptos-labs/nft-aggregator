@@ -6,7 +6,7 @@ use aptos_indexer_processor_sdk::{
     },
     traits::{async_step::AsyncRunType, AsyncStep, NamedStep, Processable},
     types::transaction_context::TransactionContext,
-    utils::errors::ProcessorError,
+    utils::{convert::standardize_address, errors::ProcessorError},
 };
 use async_trait::async_trait;
 use rayon::prelude::*;
@@ -121,10 +121,12 @@ impl ContractUpgradeChange {
             if let Some(change) = change.change.as_ref() {
                 match change {
                     Change::WriteModule(write_module_change) => {
-                        if contract_addresses.contains(write_module_change.address.as_str()) {
+                        if contract_addresses.contains(
+                            standardize_address(write_module_change.address.as_str()).as_str(),
+                        ) {
                             raw_module_changes.insert(
                                 (
-                                    write_module_change.address.clone(),
+                                    standardize_address(write_module_change.address.as_str()),
                                     write_module_change
                                         .data
                                         .clone()
@@ -143,8 +145,9 @@ impl ContractUpgradeChange {
                         }
                     }
                     Change::WriteResource(write_resource_change) => {
-                        if contract_addresses.contains(write_resource_change.address.as_str())
-                            && write_resource_change.type_str == "0x1::code::PackageRegistry"
+                        if contract_addresses.contains(
+                            standardize_address(write_resource_change.address.as_str()).as_str(),
+                        ) && write_resource_change.type_str == "0x1::code::PackageRegistry"
                         {
                             let package_upgrade: PackageUpgradeChangeOnChain =
                                 serde_json::from_str(write_resource_change.data.as_str())
@@ -154,8 +157,10 @@ impl ContractUpgradeChange {
                                             write_resource_change.data.as_str()
                                         )
                                     });
-                            raw_package_changes
-                                .push((write_resource_change.address.clone(), package_upgrade));
+                            raw_package_changes.push((
+                                standardize_address(write_resource_change.address.as_str()),
+                                package_upgrade,
+                            ));
                         }
                     }
                     _ => {}
