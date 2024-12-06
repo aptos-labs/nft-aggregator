@@ -26,8 +26,8 @@ impl RunnableConfig for IndexerProcessorConfig {
                 let events_processor = ContractUpgradeProcessor::new(self.clone()).await?;
                 events_processor.run_processor().await
             }
-            ProcessorConfig::TradeportIndexer => {
-                return Err(anyhow::anyhow!("TradeportIndexer not implemented"));
+            ProcessorConfig::MarketplaceIndexer => {
+                return Err(anyhow::anyhow!("MarketplaceIndexer not implemented"));
             }
         }
     }
@@ -63,5 +63,5 @@ impl DbConfig {
 #[serde(rename_all = "snake_case")]
 pub enum CustomConfig {
     ContractUpgradeIndexer(Vec<String>),
-    MarketplaceIndexer(String),
+    MarketplaceIndexer(Vec<String>),
 }

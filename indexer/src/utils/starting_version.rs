@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use super::database_utils::ArcDbPool;
 use crate::{
     config::indexer_processor_config::IndexerProcessorConfig,
-    db_models::processor_status::ProcessorStatusQuery,
+    db_models::contract_upgrade_indexer::processor_status::ProcessorStatusQuery,
 };
 
 pub async fn get_starting_version(

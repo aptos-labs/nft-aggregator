@@ -33,7 +33,7 @@ use serde::{Deserialize, Serialize};
 )]
 pub enum ProcessorConfig {
     ContractUpgradeIndexer,
-    TradeportIndexer,
+    MarketplaceIndexer,
 }
 
 impl ProcessorConfig {
@@ -59,7 +59,7 @@ impl ProcessorConfig {
 )]
 pub enum Processor {
     ContractUpgradeIndexer,
-    TradeportIndexer,
+    MarketplaceIndexer,
 }
 
 #[cfg(test)]

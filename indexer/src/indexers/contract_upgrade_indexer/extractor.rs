@@ -11,7 +11,7 @@ use aptos_indexer_processor_sdk::{
 use async_trait::async_trait;
 use rayon::prelude::*;
 
-use crate::db_models::{
+use crate::db_models::contract_upgrade_indexer::{
     module_upgrade::ModuleUpgrade,
     package_upgrade::{PackageUpgrade, PackageUpgradeChangeOnChain},
 };
@@ -191,6 +191,7 @@ impl ContractUpgradeChange {
                             raw_module.map(|raw_module| ModuleUpgrade {
                                 module_addr: package_address.clone(),
                                 module_name: module.name.clone(),
+                                package_name: package.name.clone(),
                                 upgrade_number: package.upgrade_number.parse().unwrap(),
                                 module_bytecode: raw_module.bytecode.clone(),
                                 module_source_code: module.source.clone(),

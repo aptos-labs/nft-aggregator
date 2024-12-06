@@ -1,7 +1,10 @@
 use diesel::{AsChangeset, ExpressionMethods, Insertable, OptionalExtension, QueryDsl, Queryable};
 use diesel_async::RunQueryDsl;
 
-use crate::{schema::processor_status, utils::database_utils::DbPoolConnection};
+use crate::{
+    contract_upgrade_schema::contract_upgrade_processor_status as processor_status,
+    utils::database_utils::DbPoolConnection,
+};
 
 #[derive(AsChangeset, Debug, Insertable)]
 #[diesel(table_name = processor_status)]
