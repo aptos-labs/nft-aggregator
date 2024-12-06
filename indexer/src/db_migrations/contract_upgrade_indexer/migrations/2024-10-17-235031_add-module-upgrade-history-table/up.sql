@@ -9,5 +9,10 @@ CREATE TABLE
         module_source_code TEXT NOT NULL,
         module_abi JSON NOT NULL,
         tx_version BIGINT NOT NULL,
-        PRIMARY KEY (module_addr, module_name, package_name, upgrade_number)
+        PRIMARY KEY (
+            module_addr,
+            module_name,
+            package_name,
+            upgrade_number
+        )
     );
