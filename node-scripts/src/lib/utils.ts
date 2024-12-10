@@ -10,7 +10,6 @@ import {
 import { createSurfClient } from "@thalalabs/surf";
 import { Client } from "pg";
 
-import { ABI } from "./abi/message_board_abi";
 import { neon } from "@neondatabase/serverless";
 
 const APTOS_CLIENT = new Aptos(
@@ -19,13 +18,9 @@ const APTOS_CLIENT = new Aptos(
   })
 );
 
-const SURF_CLIENT = createSurfClient(APTOS_CLIENT).useABI(ABI);
-
 const POSTGRES_CLIENT = neon(env.DATABASE_URL!);
 
 export const getAptosClient = () => APTOS_CLIENT;
-
-export const getSurfClient = () => SURF_CLIENT;
 
 export const getAccount = () => {
   if (!env.PRIVATE_KEY && env.PRIVATE_KEY === "to_fill") {
