@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 
 use super::database_utils::ArcDbPool;
 use crate::{
-    db_models::ledger_info::LedgerInfo,
-    schema::ledger_infos,
+    contract_upgrade_schema::contract_upgrade_ledger_infos as ledger_infos,
+    db_models::contract_upgrade_indexer::ledger_info::LedgerInfo,
     utils::{
         database_connection::get_db_connection, database_execution::execute_with_better_error,
     },

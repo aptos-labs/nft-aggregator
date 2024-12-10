@@ -4,5 +4,5 @@ pub mod health_check_server;
 pub mod indexers;
 pub mod utils;
 
-#[path = "db_migrations/schema.rs"]
-pub mod schema;
+#[path = "db_migrations/contract_upgrade_indexer/contract_upgrade_schema.rs"]
+pub mod contract_upgrade_schema;

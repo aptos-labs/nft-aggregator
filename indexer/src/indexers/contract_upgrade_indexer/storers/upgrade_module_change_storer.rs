@@ -5,8 +5,8 @@ use diesel::{insert_into, QueryResult};
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 
 use crate::{
-    db_models::module_upgrade::ModuleUpgrade,
-    schema::module_upgrade_history,
+    contract_upgrade_schema::module_upgrade_history,
+    db_models::contract_upgrade_indexer::module_upgrade::ModuleUpgrade,
     utils::{
         database_connection::get_db_connection,
         database_utils::{get_config_table_chunk_size, ArcDbPool},
@@ -24,6 +24,7 @@ async fn execute_upgrade_module_changes_sql(
                 .on_conflict((
                     module_upgrade_history::module_addr,
                     module_upgrade_history::module_name,
+                    module_upgrade_history::package_name,
                     module_upgrade_history::upgrade_number,
                 ))
                 .do_nothing();

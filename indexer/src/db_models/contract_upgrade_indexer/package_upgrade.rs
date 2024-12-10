@@ -2,7 +2,7 @@ use diesel::{AsChangeset, Insertable};
 use field_count::FieldCount;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::package_upgrade_history;
+use crate::contract_upgrade_schema::package_upgrade_history;
 
 #[derive(AsChangeset, Clone, Debug, Deserialize, FieldCount, Insertable, Serialize)]
 #[diesel(table_name = package_upgrade_history)]

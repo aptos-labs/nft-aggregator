@@ -6,12 +6,12 @@ use aptos_indexer_processor_sdk::{
     },
     traits::{async_step::AsyncRunType, AsyncStep, NamedStep, Processable},
     types::transaction_context::TransactionContext,
-    utils::errors::ProcessorError,
+    utils::{convert::standardize_address, errors::ProcessorError},
 };
 use async_trait::async_trait;
 use rayon::prelude::*;
 
-use crate::db_models::{
+use crate::db_models::contract_upgrade_indexer::{
     module_upgrade::ModuleUpgrade,
     package_upgrade::{PackageUpgrade, PackageUpgradeChangeOnChain},
 };
@@ -121,10 +121,12 @@ impl ContractUpgradeChange {
             if let Some(change) = change.change.as_ref() {
                 match change {
                     Change::WriteModule(write_module_change) => {
-                        if contract_addresses.contains(write_module_change.address.as_str()) {
+                        if contract_addresses.contains(
+                            standardize_address(write_module_change.address.as_str()).as_str(),
+                        ) {
                             raw_module_changes.insert(
                                 (
-                                    write_module_change.address.clone(),
+                                    standardize_address(write_module_change.address.as_str()),
                                     write_module_change
                                         .data
                                         .clone()
@@ -143,8 +145,9 @@ impl ContractUpgradeChange {
                         }
                     }
                     Change::WriteResource(write_resource_change) => {
-                        if contract_addresses.contains(write_resource_change.address.as_str())
-                            && write_resource_change.type_str == "0x1::code::PackageRegistry"
+                        if contract_addresses.contains(
+                            standardize_address(write_resource_change.address.as_str()).as_str(),
+                        ) && write_resource_change.type_str == "0x1::code::PackageRegistry"
                         {
                             let package_upgrade: PackageUpgradeChangeOnChain =
                                 serde_json::from_str(write_resource_change.data.as_str())
@@ -154,8 +157,10 @@ impl ContractUpgradeChange {
                                             write_resource_change.data.as_str()
                                         )
                                     });
-                            raw_package_changes
-                                .push((write_resource_change.address.clone(), package_upgrade));
+                            raw_package_changes.push((
+                                standardize_address(write_resource_change.address.as_str()),
+                                package_upgrade,
+                            ));
                         }
                     }
                     _ => {}
@@ -177,16 +182,16 @@ impl ContractUpgradeChange {
                     package
                         .modules
                         .iter()
-                        .map(|module| {
+                        .filter_map(|module| {
+                            // If raw module is missing, it means the module is not changed
+                            // This happens when developer published a new package at the same address
+                            // All the modules from the previous package are unchanged but still in the write set change
                             let raw_module = raw_module_changes
-                                .get(&(package_address.clone(), module.name.clone()))
-                                .unwrap_or_else(|| {
-                                    panic!("Module bytecode not found for module {}", module.name)
-                                });
-
-                            ModuleUpgrade {
+                                .get(&(package_address.clone(), module.name.clone()));
+                            raw_module.map(|raw_module| ModuleUpgrade {
                                 module_addr: package_address.clone(),
                                 module_name: module.name.clone(),
+                                package_name: package.name.clone(),
                                 upgrade_number: package.upgrade_number.parse().unwrap(),
                                 module_bytecode: raw_module.bytecode.clone(),
                                 module_source_code: module.source.clone(),
@@ -197,7 +202,7 @@ impl ContractUpgradeChange {
                                         panic!("Module abi is missing for module {}", module.name)
                                     })),
                                 tx_version: txn_version,
-                            }
+                            })
                         })
                         .collect::<Vec<ModuleUpgrade>>()
                 })

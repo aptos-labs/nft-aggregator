@@ -5,8 +5,8 @@ use diesel::{insert_into, QueryResult};
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 
 use crate::{
-    db_models::package_upgrade::PackageUpgrade,
-    schema::package_upgrade_history,
+    contract_upgrade_schema::package_upgrade_history,
+    db_models::contract_upgrade_indexer::package_upgrade::PackageUpgrade,
     utils::{
         database_connection::get_db_connection,
         database_utils::{get_config_table_chunk_size, ArcDbPool},
