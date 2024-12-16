@@ -6,3 +6,5 @@ DROP INDEX idx_nft_asks_collection_addr;
 DROP INDEX idx_nft_asks_seller_addr;
 
 DROP INDEX idx_nft_asks_marketplace_addr;
+
+DROP INDEX idx_nft_asks_order_type;

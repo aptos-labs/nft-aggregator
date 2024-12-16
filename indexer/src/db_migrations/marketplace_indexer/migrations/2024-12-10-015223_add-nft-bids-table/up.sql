@@ -3,7 +3,8 @@ CREATE TABLE
     nft_bids (
         bid_obj_addr VARCHAR(300) PRIMARY KEY,
         -- For v1 NFTs, this is id, for v2 NFTs, this is nft_addr
-        nft_id VARCHAR(300) NOT NULL,
+        -- For collection bid, this only gets set after order is filled
+        nft_id VARCHAR(300),
         collection_addr VARCHAR(300) NOT NULL,
         -- 1 is token v1, 2 is token v2
         nft_standard INT NOT NULL,
@@ -22,6 +23,8 @@ CREATE TABLE
         last_update_event_idx BIGINT NOT NULL,
         -- 1 is active, 2 is filled, 3 is cancelled
         order_status INT NOT NULL,
+        -- 1 is specific nft order, 2 is collection order
+        order_type INT NOT NULL,
         CHECK (nft_standard IN (1, 2)),
         CHECK (payment_token_type IN (1, 2)),
         CHECK (order_status IN (1, 2, 3))

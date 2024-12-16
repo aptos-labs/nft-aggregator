@@ -69,6 +69,7 @@ diesel::table! {
         last_update_timestamp -> Int8,
         last_update_event_idx -> Int8,
         order_status -> Int4,
+        order_type -> Int4,
     }
 }
 
@@ -77,7 +78,7 @@ diesel::table! {
         #[max_length = 300]
         bid_obj_addr -> Varchar,
         #[max_length = 300]
-        nft_id -> Varchar,
+        nft_id -> Nullable<Varchar>,
         #[max_length = 300]
         collection_addr -> Varchar,
         nft_standard -> Int4,
@@ -93,28 +94,7 @@ diesel::table! {
         last_update_timestamp -> Int8,
         last_update_event_idx -> Int8,
         order_status -> Int4,
-    }
-}
-
-diesel::table! {
-    nft_collection_bids (bid_obj_addr) {
-        #[max_length = 300]
-        bid_obj_addr -> Varchar,
-        #[max_length = 300]
-        collection_addr -> Varchar,
-        nft_standard -> Int4,
-        #[max_length = 300]
-        marketplace_addr -> Varchar,
-        #[max_length = 300]
-        buyer_addr -> Varchar,
-        price -> Int8,
-        #[max_length = 300]
-        payment_token -> Varchar,
-        payment_token_type -> Int4,
-        create_timestamp -> Int8,
-        last_update_timestamp -> Int8,
-        last_update_event_idx -> Int8,
-        order_status -> Int4,
+        order_type -> Int4,
     }
 }
 
@@ -140,6 +120,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     module_upgrade_history,
     nft_asks,
     nft_bids,
-    nft_collection_bids,
     package_upgrade_history,
 );

@@ -21,6 +21,8 @@ CREATE TABLE
         last_update_event_idx BIGINT NOT NULL,
         -- 1 is active, 2 is filled, 3 is cancelled
         order_status INT NOT NULL,
+        -- 1 is fixed price, 2 is auction
+        order_type INT NOT NULL,
         CHECK (nft_standard IN (1, 2)),
         CHECK (payment_token_type IN (1, 2)),
         CHECK (order_status IN (1, 2, 3))
