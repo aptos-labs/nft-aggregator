@@ -2,7 +2,7 @@ use diesel::{Identifiable, Insertable, OptionalExtension, QueryDsl, Queryable};
 use diesel_async::RunQueryDsl;
 
 use crate::{
-    contract_upgrade_schema::contract_upgrade_ledger_infos as ledger_infos,
+    marketplace_schema::marketplace_ledger_infos as ledger_infos,
     utils::database_utils::DbPoolConnection,
 };
 

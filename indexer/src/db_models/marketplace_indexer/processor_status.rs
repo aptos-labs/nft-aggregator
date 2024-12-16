@@ -2,7 +2,7 @@ use diesel::{AsChangeset, ExpressionMethods, Insertable, OptionalExtension, Quer
 use diesel_async::RunQueryDsl;
 
 use crate::{
-    contract_upgrade_schema::contract_upgrade_processor_status as processor_status,
+    marketplace_schema::marketplace_processor_status as processor_status,
     utils::database_utils::DbPoolConnection,
 };
 
