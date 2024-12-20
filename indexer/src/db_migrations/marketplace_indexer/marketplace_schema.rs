@@ -1,6 +1,40 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    collection_bids (bid_obj_addr) {
+        #[max_length = 300]
+        bid_obj_addr -> Varchar,
+        #[max_length = 300]
+        collection_addr -> Nullable<Varchar>,
+        #[max_length = 300]
+        collection_creator_addr -> Varchar,
+        #[max_length = 300]
+        collection_name -> Varchar,
+        nft_standard -> Int4,
+        #[max_length = 300]
+        marketplace_addr -> Varchar,
+        #[max_length = 300]
+        buyer_addr -> Varchar,
+        total_nft_amount -> Int8,
+        remaining_nft_amount -> Int8,
+        price -> Int8,
+        #[max_length = 300]
+        payment_token -> Varchar,
+        payment_token_type -> Int4,
+        order_placed_timestamp -> Int8,
+        order_placed_tx_version -> Int8,
+        order_placed_event_idx -> Int8,
+        latest_order_filled_timestamp -> Int8,
+        latest_order_filled_tx_version -> Int8,
+        latest_order_filled_event_idx -> Int8,
+        order_cancelled_timestamp -> Int8,
+        order_cancelled_tx_version -> Int8,
+        order_cancelled_event_idx -> Int8,
+        order_status -> Int4,
+    }
+}
+
+diesel::table! {
     contract_upgrade_ledger_infos (chain_id) {
         chain_id -> Int8,
     }
@@ -13,6 +47,23 @@ diesel::table! {
         last_success_version -> Int8,
         last_updated -> Timestamp,
         last_transaction_timestamp -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    filled_collection_bids (bid_obj_addr, nft_id, nft_name) {
+        #[max_length = 300]
+        bid_obj_addr -> Varchar,
+        #[max_length = 300]
+        nft_id -> Varchar,
+        #[max_length = 300]
+        nft_name -> Varchar,
+        price -> Int8,
+        royalties -> Int8,
+        commission -> Int8,
+        order_filled_timestamp -> Int8,
+        order_filled_tx_version -> Int8,
+        order_filled_event_idx -> Int8,
     }
 }
 
@@ -49,27 +100,40 @@ diesel::table! {
 }
 
 diesel::table! {
-    nft_asks (listing_obj_addr) {
+    nft_asks (ask_obj_addr) {
         #[max_length = 300]
-        listing_obj_addr -> Varchar,
+        ask_obj_addr -> Varchar,
         #[max_length = 300]
         nft_id -> Varchar,
         #[max_length = 300]
-        collection_addr -> Varchar,
+        nft_name -> Varchar,
+        #[max_length = 300]
+        collection_addr -> Nullable<Varchar>,
+        #[max_length = 300]
+        collection_creator_addr -> Varchar,
+        #[max_length = 300]
+        collection_name -> Varchar,
         nft_standard -> Int4,
         #[max_length = 300]
         marketplace_addr -> Varchar,
         #[max_length = 300]
         seller_addr -> Varchar,
         price -> Int8,
+        royalties -> Int8,
+        commission -> Int8,
         #[max_length = 300]
         payment_token -> Varchar,
         payment_token_type -> Int4,
-        create_timestamp -> Int8,
-        last_update_timestamp -> Int8,
-        last_update_event_idx -> Int8,
+        order_placed_timestamp -> Int8,
+        order_placed_tx_version -> Int8,
+        order_placed_event_idx -> Int8,
+        order_filled_timestamp -> Int8,
+        order_filled_tx_version -> Int8,
+        order_filled_event_idx -> Int8,
+        order_cancelled_timestamp -> Int8,
+        order_cancelled_tx_version -> Int8,
+        order_cancelled_event_idx -> Int8,
         order_status -> Int4,
-        order_type -> Int4,
     }
 }
 
@@ -78,23 +142,36 @@ diesel::table! {
         #[max_length = 300]
         bid_obj_addr -> Varchar,
         #[max_length = 300]
-        nft_id -> Nullable<Varchar>,
+        nft_id -> Varchar,
         #[max_length = 300]
-        collection_addr -> Varchar,
+        nft_name -> Varchar,
+        #[max_length = 300]
+        collection_addr -> Nullable<Varchar>,
+        #[max_length = 300]
+        collection_creator_addr -> Varchar,
+        #[max_length = 300]
+        collection_name -> Varchar,
         nft_standard -> Int4,
         #[max_length = 300]
         marketplace_addr -> Varchar,
         #[max_length = 300]
         buyer_addr -> Varchar,
         price -> Int8,
+        royalties -> Int8,
+        commission -> Int8,
         #[max_length = 300]
         payment_token -> Varchar,
         payment_token_type -> Int4,
-        create_timestamp -> Int8,
-        last_update_timestamp -> Int8,
-        last_update_event_idx -> Int8,
+        order_placed_timestamp -> Int8,
+        order_placed_tx_version -> Int8,
+        order_placed_event_idx -> Int8,
+        order_filled_timestamp -> Int8,
+        order_filled_tx_version -> Int8,
+        order_filled_event_idx -> Int8,
+        order_cancelled_timestamp -> Int8,
+        order_cancelled_tx_version -> Int8,
+        order_cancelled_event_idx -> Int8,
         order_status -> Int4,
-        order_type -> Int4,
     }
 }
 
@@ -112,9 +189,13 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(filled_collection_bids -> collection_bids (bid_obj_addr));
+
 diesel::allow_tables_to_appear_in_same_query!(
+    collection_bids,
     contract_upgrade_ledger_infos,
     contract_upgrade_processor_status,
+    filled_collection_bids,
     marketplace_ledger_infos,
     marketplace_processor_status,
     module_upgrade_history,

@@ -16,12 +16,12 @@ use crate::{
     },
 };
 
-pub struct ContractUpgradeProcessor {
+pub struct MarketplaceProcessor {
     pub config: IndexerProcessorConfig,
     pub db_pool: ArcDbPool,
 }
 
-impl ContractUpgradeProcessor {
+impl MarketplaceProcessor {
     pub async fn new(config: IndexerProcessorConfig) -> Result<Self> {
         let conn_pool = new_db_pool(
             &config.db_config.postgres_connection_string,
@@ -40,7 +40,7 @@ impl ContractUpgradeProcessor {
         let starting_version = get_starting_version(&self.config, self.db_pool.clone()).await?;
 
         tracing::info!(
-            "Starting contract upgrade processor with starting version: {:?}",
+            "Starting marketplace processor with starting version: {:?}",
             starting_version
         );
 
