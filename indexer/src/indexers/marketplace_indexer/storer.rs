@@ -8,7 +8,7 @@ use aptos_indexer_processor_sdk::{
 use async_trait::async_trait;
 
 use super::{
-    extractor::{ContractUpgradeChange, TransactionContextData},
+    extractor::{ContractEvent, TransactionContextData},
     storers::{
         upgrade_module_change_storer::process_upgrade_module_changes,
         upgrade_package_change_storer::process_upgrade_package_changes,
@@ -50,33 +50,79 @@ impl Processable for Storer {
     ) -> Result<Option<TransactionContext<TransactionContextData>>, ProcessorError> {
         let per_table_chunk_sizes: AHashMap<String, usize> = AHashMap::new();
         let data = transaction_context_data.data.clone();
-
-        let (module_upgrades, package_upgrades) = data.changes.into_iter().fold(
-            (vec![], vec![]),
-            |(mut module_upgrades, mut package_upgrades), upgrade_change| {
-                match upgrade_change {
-                    ContractUpgradeChange::ModuleUpgradeChange(module_upgrade) => {
-                        module_upgrades.push(module_upgrade);
+        let (create_events, update_events) = data.events.into_iter().fold(
+            (
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+            ),
+            |(
+                mut bid_placed_events,
+                mut bid_filled_events,
+                mut bid_cancelled_events,
+                mut ask_placed_events,
+                mut ask_filled_events,
+                mut ask_cancelled_events,
+                mut collection_bid_placed_events,
+                mut collection_bid_filled_events,
+                mut collection_bid_cancelled_events,
+            ),
+             event| {
+                match event {
+                    ContractEvent::BidOrderPlacedEvent(nft_bid) => bid_placed_events.push(nft_bid),
+                    ContractEvent::BidOrderFilledEvent(nft_bid) => bid_filled_events.push(nft_bid),
+                    ContractEvent::BidOrderCancelledEvent(nft_bid) => {
+                        bid_cancelled_events.push(nft_bid)
                     }
-                    ContractUpgradeChange::PackageUpgradeChange(package_upgrade) => {
-                        package_upgrades.push(package_upgrade);
+                    ContractEvent::AskOrderPlacedEvent(nft_ask) => ask_placed_events.push(nft_ask),
+                    ContractEvent::AskOrderFilledEvent(nft_ask) => ask_filled_events.push(nft_ask),
+                    ContractEvent::AskOrderCancelledEvent(nft_ask) => {
+                        ask_cancelled_events.push(nft_ask)
+                    }
+                    ContractEvent::CollectionBidOrderPlacedEvent(collection_bid) => {
+                        collection_bid_placed_events.push(collection_bid)
+                    }
+                    ContractEvent::CollectionBidOrderFilledEvent((
+                        collection_bid,
+                        filled_collection_bid,
+                    )) => {
+                        collection_bid_filled_events.push((collection_bid, filled_collection_bid))
+                    }
+                    ContractEvent::CollectionBidOrderCancelledEvent(collection_bid) => {
+                        collection_bid_cancelled_events.push(collection_bid)
                     }
                 }
-                (module_upgrades, package_upgrades)
+                (
+                    bid_placed_events,
+                    bid_filled_events,
+                    bid_cancelled_events,
+                    ask_placed_events,
+                    ask_filled_events,
+                    ask_cancelled_events,
+                    collection_bid_placed_events,
+                    collection_bid_filled_events,
+                    collection_bid_cancelled_events,
+                )
             },
         );
 
-        process_upgrade_module_changes(
+        process_create_message_events(
             self.pool.clone(),
             per_table_chunk_sizes.clone(),
-            module_upgrades,
+            create_events,
         )
         .await?;
 
-        process_upgrade_package_changes(
+        process_update_message_events(
             self.pool.clone(),
             per_table_chunk_sizes.clone(),
-            package_upgrades,
+            update_events,
         )
         .await?;
 

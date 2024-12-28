@@ -15,9 +15,8 @@ use super::{
     database_utils::ArcDbPool,
 };
 use crate::{
-    config::indexer_processor_config::DbConfig,
-    contract_upgrade_schema::contract_upgrade_processor_status as processor_status,
-    db_models::contract_upgrade_indexer::processor_status::ProcessorStatus,
+    config::indexer_processor_config::DbConfig, db_models::processor_status::ProcessorStatus,
+    schema::processor_status,
 };
 
 const UPDATE_PROCESSOR_STATUS_SECS: u64 = 1;

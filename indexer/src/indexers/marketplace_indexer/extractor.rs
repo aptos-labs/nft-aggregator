@@ -1,8 +1,8 @@
-use ahash::{AHashMap, AHashSet};
+use ahash::AHashSet;
 use anyhow::Result;
 use aptos_indexer_processor_sdk::{
     aptos_protos::transaction::v1::{
-        write_set_change::Change, Event as EventPB, MoveModuleBytecode, Transaction, WriteSetChange,
+        transaction::TxnData, Event as EventPB, Transaction, WriteSetChange,
     },
     traits::{async_step::AsyncRunType, AsyncStep, NamedStep, Processable},
     types::transaction_context::TransactionContext,
@@ -11,9 +11,20 @@ use aptos_indexer_processor_sdk::{
 use async_trait::async_trait;
 use rayon::prelude::*;
 
-use crate::db_models::contract_upgrade_indexer::{
-    module_upgrade::ModuleUpgrade,
-    package_upgrade::{PackageUpgrade, PackageUpgradeChangeOnChain},
+use crate::db_models::{
+    collection_bids::{
+        CollectionBid, CollectionBidOrderCancelledEventOnChain,
+        CollectionBidOrderFilledEventOnChain, CollectionBidOrderPlacedEventOnChain,
+        FilledCollectionBid,
+    },
+    nft_asks::{
+        AskOrderCancelledEventOnChain, AskOrderFilledEventOnChain, AskOrderPlacedEventOnChain,
+        NftAsk,
+    },
+    nft_bids::{
+        BidOrderCancelledEventOnChain, BidOrderFilledEventOnChain, BidOrderPlacedEventOnChain,
+        NftBid,
+    },
 };
 
 /// Extractor is a step that extracts events and their metadata from transactions.
@@ -50,33 +61,36 @@ impl Processable for Extractor {
         &mut self,
         item: TransactionContext<Vec<Transaction>>,
     ) -> Result<Option<TransactionContext<TransactionContextData>>, ProcessorError> {
-        let results: Vec<(Vec<_>, Vec<ContractUpgradeChange>)> = item
+        let results: Vec<(Vec<ContractEvent>, Vec<WriteSetChange>)> = item
             .data
             .par_iter()
             .map(|txn| {
-                let txn_version = txn.version as i64;
-                let txn_info = match txn.info.as_ref() {
-                    Some(info) => info,
+                let tx_version = txn.version as i64;
+                let txn_data = match txn.txn_data.as_ref() {
+                    Some(data) => data,
                     None => {
                         tracing::warn!(
-                            transaction_version = txn_version,
-                            "Transaction info doesn't exist"
+                            transaction_version = tx_version,
+                            "Transaction data doesn't exist"
                         );
                         return (vec![], vec![]);
                     }
                 };
+                let raw_events = match txn_data {
+                    TxnData::BlockMetadata(tx_inner) => &tx_inner.events,
+                    TxnData::Genesis(tx_inner) => &tx_inner.events,
+                    TxnData::User(tx_inner) => &tx_inner.events,
+                    _ => &vec![],
+                };
 
-                let txn_changes = ContractUpgradeChange::from_changes(
-                    &self.contract_addresses,
-                    txn_version,
-                    txn_info.changes.as_slice(),
-                );
+                let txn_events =
+                    ContractEvent::from_events(&self.contract_addresses, raw_events, tx_version);
 
-                (vec![], txn_changes)
+                (txn_events, vec![])
             })
-            .collect::<Vec<(Vec<_>, Vec<ContractUpgradeChange>)>>();
+            .collect::<Vec<(Vec<ContractEvent>, Vec<WriteSetChange>)>>();
 
-        let (events, changes): (Vec<EventPB>, Vec<ContractUpgradeChange>) =
+        let (events, changes): (Vec<ContractEvent>, Vec<WriteSetChange>) =
             results.into_iter().fold(
                 (Vec::new(), Vec::new()),
                 |(mut events_acc, mut changes_acc), (events, changes)| {
@@ -95,128 +109,183 @@ impl Processable for Extractor {
 
 #[derive(Debug, Clone)]
 pub struct TransactionContextData {
-    pub events: Vec<EventPB>,
-    pub changes: Vec<ContractUpgradeChange>,
+    pub events: Vec<ContractEvent>,
+    pub changes: Vec<WriteSetChange>,
 }
 
 #[derive(Debug, Clone)]
-pub enum ContractUpgradeChange {
-    ModuleUpgradeChange(ModuleUpgrade),
-    PackageUpgradeChange(PackageUpgrade),
+pub enum ContractEvent {
+    BidOrderPlacedEvent(NftBid),
+    BidOrderFilledEvent(NftBid),
+    BidOrderCancelledEvent(NftBid),
+    AskOrderPlacedEvent(NftAsk),
+    AskOrderFilledEvent(NftAsk),
+    AskOrderCancelledEvent(NftAsk),
+    CollectionBidOrderPlacedEvent(CollectionBid),
+    CollectionBidOrderFilledEvent((CollectionBid, FilledCollectionBid)),
+    CollectionBidOrderCancelledEvent(CollectionBid),
 }
 
-impl ContractUpgradeChange {
-    pub fn from_changes(
+impl ContractEvent {
+    fn from_event(
         contract_addresses: &AHashSet<String>,
-        txn_version: i64,
-        changes: &[WriteSetChange],
-    ) -> Vec<Self> {
-        // key is (contract_address, module_name), value is MoveModuleBytecode
-        let mut raw_module_changes: AHashMap<(String, String), MoveModuleBytecode> =
-            AHashMap::new();
-        // (package_address, package_upgrade_change)
-        let mut raw_package_changes: Vec<(String, PackageUpgradeChangeOnChain)> = vec![];
+        event_idx: i64,
+        event: &EventPB,
+        tx_version: i64,
+    ) -> Option<Self> {
+        // use standardize_address to pad the address in event type before processing
+        let parts = event.type_str.split("::").collect::<Vec<_>>();
+        let event_addr = standardize_address(parts[0]);
+        let t = event_addr.clone() + "::" + parts[1] + "::" + parts[2];
+        let should_include = contract_addresses.contains(event_addr.as_str());
 
-        changes.iter().for_each(|change| {
-            if let Some(change) = change.change.as_ref() {
-                match change {
-                    Change::WriteModule(write_module_change) => {
-                        if contract_addresses.contains(
-                            standardize_address(write_module_change.address.as_str()).as_str(),
-                        ) {
-                            raw_module_changes.insert(
-                                (
-                                    standardize_address(write_module_change.address.as_str()),
-                                    write_module_change
-                                        .data
-                                        .clone()
-                                        .unwrap_or_else(|| {
-                                            panic!("MoveModuleBytecode data is missing",)
-                                        })
-                                        .abi
-                                        .clone()
-                                        .unwrap_or_else(|| {
-                                            panic!("MoveModuleBytecode abi is missing",)
-                                        })
-                                        .name,
-                                ),
-                                write_module_change.data.clone().unwrap(),
-                            );
-                        }
-                    }
-                    Change::WriteResource(write_resource_change) => {
-                        if contract_addresses.contains(
-                            standardize_address(write_resource_change.address.as_str()).as_str(),
-                        ) && write_resource_change.type_str == "0x1::code::PackageRegistry"
-                        {
-                            let package_upgrade: PackageUpgradeChangeOnChain =
-                                serde_json::from_str(write_resource_change.data.as_str())
-                                    .unwrap_or_else(|_| {
-                                        panic!(
-                                            "Failed to parse PackageUpgradeChangeOnChain, {}",
-                                            write_resource_change.data.as_str()
-                                        )
-                                    });
-                            raw_package_changes.push((
-                                standardize_address(write_resource_change.address.as_str()),
-                                package_upgrade,
-                            ));
-                        }
-                    }
-                    _ => {}
-                }
+        if should_include {
+            if t.starts_with(format!("{}::events::BidOrderPlacedEvent", event_addr).as_str()) {
+                println!("BidOrderPlacedEvent {}", event.data.as_str());
+                let parsed_event: BidOrderPlacedEventOnChain =
+                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
+                        panic!(
+                            "Failed to parse BidOrderPlacedEvent, {}",
+                            event.data.as_str()
+                        )
+                    });
+                Some(ContractEvent::BidOrderPlacedEvent(
+                    parsed_event.to_db_nft_bid(event_addr, tx_version, event_idx),
+                ))
+            } else if t.starts_with(format!("{}::events::BidOrderFilledEvent", event_addr).as_str())
+            {
+                println!("BidOrderFilledEvent {}", event.data.as_str());
+                let parsed_event: BidOrderFilledEventOnChain =
+                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
+                        panic!(
+                            "Failed to parse BidOrderFilledEvent, {}",
+                            event.data.as_str()
+                        )
+                    });
+                Some(ContractEvent::BidOrderFilledEvent(
+                    parsed_event.to_db_nft_bid(event_addr, tx_version, event_idx),
+                ))
+            } else if t
+                .starts_with(format!("{}::events::BidOrderCancelledEvent", event_addr).as_str())
+                || t.starts_with(format!("{}::events::BidOrderCanceledEvent", event_addr).as_str())
+            {
+                println!("BidOrderCancelledEvent {}", event.data.as_str());
+                let parsed_event: BidOrderCancelledEventOnChain =
+                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
+                        panic!(
+                            "Failed to parse BidOrderCancelledEvent, {}",
+                            event.data.as_str()
+                        )
+                    });
+                Some(ContractEvent::BidOrderCancelledEvent(
+                    parsed_event.to_db_nft_bid(event_addr, tx_version, event_idx),
+                ))
+            } else if t.starts_with(format!("{}::events::AskOrderPlacedEvent", event_addr).as_str())
+            {
+                println!("AskOrderPlacedEvent {}", event.data.as_str());
+                let parsed_event: AskOrderPlacedEventOnChain =
+                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
+                        panic!(
+                            "Failed to parse AskOrderPlacedEvent, {}",
+                            event.data.as_str()
+                        )
+                    });
+                Some(ContractEvent::AskOrderPlacedEvent(
+                    parsed_event.to_db_nft_ask(event_addr, tx_version, event_idx),
+                ))
+            } else if t.starts_with(format!("{}::events::AskOrderFilledEvent", event_addr).as_str())
+            {
+                println!("AskOrderFilledEvent {}", event.data.as_str());
+                let parsed_event: AskOrderFilledEventOnChain =
+                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
+                        panic!(
+                            "Failed to parse AskOrderFilledEvent, {}",
+                            event.data.as_str()
+                        )
+                    });
+                Some(ContractEvent::AskOrderFilledEvent(
+                    parsed_event.to_db_nft_ask(event_addr, tx_version, event_idx),
+                ))
+            } else if t
+                .starts_with(format!("{}::events::AskOrderCancelledEvent", event_addr).as_str())
+                || t.starts_with(format!("{}::events::AskOrderCanceledEvent", event_addr).as_str())
+            {
+                println!("AskOrderCancelledEvent {}", event.data.as_str());
+                let parsed_event: AskOrderCancelledEventOnChain =
+                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
+                        panic!(
+                            "Failed to parse AskOrderCancelledEvent, {}",
+                            event.data.as_str()
+                        )
+                    });
+                Some(ContractEvent::AskOrderCancelledEvent(
+                    parsed_event.to_db_nft_ask(event_addr, tx_version, event_idx),
+                ))
+            } else if t.starts_with(
+                format!("{}::events::CollectionBidOrderPlacedEvent", event_addr).as_str(),
+            ) {
+                println!("CollectionBidOrderPlacedEvent {}", event.data.as_str());
+                let parsed_event: CollectionBidOrderPlacedEventOnChain =
+                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
+                        panic!(
+                            "Failed to parse CollectionBidOrderPlacedEvent, {}",
+                            event.data.as_str()
+                        )
+                    });
+                Some(ContractEvent::CollectionBidOrderPlacedEvent(
+                    parsed_event.to_db_collection_bid(event_addr, tx_version, event_idx),
+                ))
+            } else if t.starts_with(
+                format!("{}::events::CollectionBidOrderFilledEvent", event_addr).as_str(),
+            ) {
+                println!("CollectionBidOrderFilledEvent {}", event.data.as_str());
+                let parsed_event: CollectionBidOrderFilledEventOnChain =
+                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
+                        panic!(
+                            "Failed to parse CollectionBidOrderFilledEvent, {}",
+                            event.data.as_str()
+                        )
+                    });
+                Some(ContractEvent::CollectionBidOrderFilledEvent(
+                    parsed_event.to_db_collection_bid_and_filled_collection_bid(
+                        event_addr, tx_version, event_idx,
+                    ),
+                ))
+            } else if t.starts_with(
+                format!("{}::events::CollectionBidOrderCancelledEvent", event_addr).as_str(),
+            ) || t.starts_with(
+                format!("{}::events::CollectionBidOrderCanceledEvent", event_addr).as_str(),
+            ) {
+                println!("CollectionBidOrderCancelledEvent {}", event.data.as_str());
+                let parsed_event: CollectionBidOrderCancelledEventOnChain =
+                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
+                        panic!(
+                            "Failed to parse CollectionBidOrderCancelledEvent, {}",
+                            event.data.as_str()
+                        )
+                    });
+                Some(ContractEvent::CollectionBidOrderCancelledEvent(
+                    parsed_event.to_db_collection_bid(event_addr, tx_version, event_idx),
+                ))
+            } else {
+                None
             }
-        });
+        } else {
+            None
+        }
+    }
 
-        let package_changes = raw_package_changes
+    pub fn from_events(
+        contract_addresses: &AHashSet<String>,
+        events: &[EventPB],
+        tx_version: i64,
+    ) -> Vec<Self> {
+        events
             .iter()
-            .flat_map(|(package_address, package_change)| {
-                package_change.to_db_package_upgrade(txn_version, package_address.clone())
+            .enumerate()
+            .filter_map(|(idx, event)| {
+                Self::from_event(contract_addresses, idx as i64, event, tx_version)
             })
-            .collect::<Vec<PackageUpgrade>>();
-
-        let module_changes = raw_package_changes
-            .iter()
-            .flat_map(|(package_address, package_change)| {
-                package_change.packages.iter().flat_map(|package| {
-                    package
-                        .modules
-                        .iter()
-                        .filter_map(|module| {
-                            // If raw module is missing, it means the module is not changed
-                            // This happens when developer published a new package at the same address
-                            // All the modules from the previous package are unchanged but still in the write set change
-                            let raw_module = raw_module_changes
-                                .get(&(package_address.clone(), module.name.clone()));
-                            raw_module.map(|raw_module| ModuleUpgrade {
-                                module_addr: package_address.clone(),
-                                module_name: module.name.clone(),
-                                package_name: package.name.clone(),
-                                upgrade_number: package.upgrade_number.parse().unwrap(),
-                                module_bytecode: raw_module.bytecode.clone(),
-                                module_source_code: module.source.clone(),
-                                module_abi: serde_json::json!(raw_module
-                                    .abi
-                                    .clone()
-                                    .unwrap_or_else(|| {
-                                        panic!("Module abi is missing for module {}", module.name)
-                                    })),
-                                tx_version: txn_version,
-                            })
-                        })
-                        .collect::<Vec<ModuleUpgrade>>()
-                })
-            })
-            .collect::<Vec<ModuleUpgrade>>();
-
-        module_changes
-            .into_iter()
-            .map(ContractUpgradeChange::ModuleUpgradeChange)
-            .chain(
-                package_changes
-                    .into_iter()
-                    .map(ContractUpgradeChange::PackageUpgradeChange),
-            )
             .collect()
     }
 }

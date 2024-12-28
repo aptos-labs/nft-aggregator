@@ -58,7 +58,7 @@ impl MarketplaceProcessor {
         })
         .await?;
         let events_extractor = Extractor::new(match self.config.custom_config {
-            CustomConfig::ContractUpgradeIndexer(contract_addresses) => contract_addresses,
+            CustomConfig::MarketplaceIndexer(contract_addresses) => contract_addresses,
             _ => {
                 return Err(anyhow::anyhow!("Invalid custom config"));
             }

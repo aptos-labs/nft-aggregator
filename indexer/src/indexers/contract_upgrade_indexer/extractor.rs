@@ -11,7 +11,7 @@ use aptos_indexer_processor_sdk::{
 use async_trait::async_trait;
 use rayon::prelude::*;
 
-use crate::db_models::contract_upgrade_indexer::{
+use crate::db_models::{
     module_upgrade::ModuleUpgrade,
     package_upgrade::{PackageUpgrade, PackageUpgradeChangeOnChain},
 };

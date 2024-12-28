@@ -5,55 +5,48 @@ use diesel::{insert_into, QueryResult};
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 
 use crate::{
-    db_models::module_upgrade::ModuleUpgrade,
-    schema::module_upgrade_history,
+    db_models::nft_bids::NftBid,
+    schema::nft_bids,
     utils::{
         database_connection::get_db_connection,
         database_utils::{get_config_table_chunk_size, ArcDbPool},
     },
 };
 
-async fn execute_upgrade_module_changes_sql(
+async fn execute_sql(
     conn: &mut AsyncPgConnection,
-    items_to_insert: Vec<ModuleUpgrade>,
+    items_to_insert: Vec<NftBid>,
 ) -> QueryResult<()> {
     conn.transaction(|conn| {
         Box::pin(async move {
-            let create_module_upgrade_query = insert_into(module_upgrade_history::table)
+            let sql = insert_into(nft_bids::table)
                 .values(items_to_insert.clone())
-                .on_conflict((
-                    module_upgrade_history::module_addr,
-                    module_upgrade_history::module_name,
-                    module_upgrade_history::package_name,
-                    module_upgrade_history::upgrade_number,
-                ))
+                .on_conflict(nft_bids::bid_obj_addr)
                 .do_nothing();
-            create_module_upgrade_query.execute(conn).await?;
+            sql.execute(conn).await?;
+
             Ok(())
         })
     })
     .await
 }
 
-pub async fn process_upgrade_module_changes(
+pub async fn process_bid_placed_events(
     pool: ArcDbPool,
     per_table_chunk_sizes: AHashMap<String, usize>,
-    upgrade_changes: Vec<ModuleUpgrade>,
+    events: Vec<NftBid>,
 ) -> Result<(), ProcessorError> {
-    let chunk_size = get_config_table_chunk_size::<ModuleUpgrade>(
-        "module_upgrade_history",
-        &per_table_chunk_sizes,
-    );
-    let tasks = upgrade_changes
+    let chunk_size = get_config_table_chunk_size::<NftBid>("nft_bids", &per_table_chunk_sizes);
+    let tasks = events
         .chunks(chunk_size)
         .map(|chunk| {
             let pool = pool.clone();
             let items = chunk.to_vec();
             tokio::spawn(async move {
                 let conn = &mut get_db_connection(&pool).await.expect(
-                    "Failed to get connection from pool while processing upgrade module changes",
+                    "Failed to get connection from pool while processing create message events",
                 );
-                execute_upgrade_module_changes_sql(conn, items).await
+                execute_sql(conn, items).await
             })
         })
         .collect::<Vec<_>>();
