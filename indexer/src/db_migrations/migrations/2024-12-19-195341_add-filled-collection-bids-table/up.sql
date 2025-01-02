@@ -8,6 +8,7 @@ CREATE TABLE
         -- For collection bid, this only gets set after order is filled
         nft_id VARCHAR(300) NOT NULL,
         nft_name VARCHAR(300) NOT NULL,
+        seller_addr VARCHAR(300) NOT NULL,
         -- price in on-chain unit, for APT it's oct
         price BIGINT NOT NULL,
         -- in on-chain unit, for APT it's oct

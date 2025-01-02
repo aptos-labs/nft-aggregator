@@ -1,135 +1,87 @@
 use ahash::AHashMap;
 use anyhow::Result;
 use aptos_indexer_processor_sdk::utils::errors::ProcessorError;
-use diesel::{insert_into, upsert::excluded, ExpressionMethods, QueryResult};
+use diesel::{
+    insert_into, query_dsl::methods::FilterDsl, upsert::excluded, ExpressionMethods, QueryResult,
+};
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
-use std::cmp;
 
 use crate::{
-    db_models::{message::Message, user_stat::UserStat},
-    schema::{messages, user_stats},
+    db_models::{nft_bids::NftBid, shared::OrderStatus},
+    schema::nft_bids,
     utils::{
         database_connection::get_db_connection,
+        database_execution::handle_db_execution,
         database_utils::{get_config_table_chunk_size, ArcDbPool},
     },
 };
 
-const POINT_PER_NEW_MESSAGE: i64 = 2;
-
-async fn execute_create_message_events_sql(
+async fn execute_sql(
     conn: &mut AsyncPgConnection,
-    items_to_insert: Vec<Message>,
-    user_stats_changes: AHashMap<String, (i64, i64, i64)>,
+    items_to_insert: Vec<NftBid>,
 ) -> QueryResult<()> {
     conn.transaction(|conn| {
         Box::pin(async move {
-            let create_message_query = insert_into(messages::table)
+            let sql = insert_into(nft_bids::table)
                 .values(items_to_insert.clone())
-                .on_conflict(messages::message_obj_addr)
-                .do_nothing();
-            create_message_query.execute(conn).await?;
-
-            /*
-            DO NOT backfill data (i.e. process same event twice), you would mess up the user stat!!!!
-            Instead, if you want to change the point calculation logic, you should delete all data and re-index from scratch.
-            You can delete all data by revert all DB migrations, see README.md for more details.
-             */
-            let update_user_stat_query = insert_into(user_stats::table)
-                .values(
-                    user_stats_changes
-                        .iter()
-                        .map(
-                            |(
-                                user_addr,
-                                (
-                                    new_message_count,
-                                    earliest_message_creation_time,
-                                    latest_message_creation_time,
-                                ),
-                            )| UserStat {
-                                user_addr: user_addr.clone(),
-                                creation_timestamp: *earliest_message_creation_time,
-                                last_update_timestamp: *latest_message_creation_time,
-                                created_messages: *new_message_count,
-                                updated_messages: 0,
-                                s1_points: new_message_count * POINT_PER_NEW_MESSAGE,
-                                total_points: new_message_count * POINT_PER_NEW_MESSAGE,
-                            },
-                        )
-                        .collect::<Vec<_>>(),
-                )
-                .on_conflict(user_stats::user_addr)
+                .on_conflict(nft_bids::bid_obj_addr)
                 .do_update()
                 .set((
-                    user_stats::user_addr.eq(user_stats::user_addr),
-                    user_stats::creation_timestamp.eq(user_stats::creation_timestamp),
-                    user_stats::last_update_timestamp
-                        .eq(excluded(user_stats::last_update_timestamp)),
-                    user_stats::created_messages
-                        .eq(user_stats::created_messages + excluded(user_stats::created_messages)),
-                    user_stats::updated_messages.eq(user_stats::updated_messages),
-                    user_stats::s1_points
-                        .eq(user_stats::s1_points + excluded(user_stats::s1_points)),
-                    user_stats::total_points
-                        .eq(user_stats::total_points + excluded(user_stats::total_points)),
-                ));
-            update_user_stat_query.execute(conn).await?;
-
+                    nft_bids::bid_obj_addr.eq(nft_bids::bid_obj_addr),
+                    nft_bids::nft_id.eq(nft_bids::nft_id),
+                    nft_bids::nft_name.eq(nft_bids::nft_name),
+                    nft_bids::collection_addr.eq(nft_bids::collection_addr),
+                    nft_bids::collection_creator_addr.eq(nft_bids::collection_creator_addr),
+                    nft_bids::collection_name.eq(nft_bids::collection_name),
+                    nft_bids::nft_standard.eq(nft_bids::nft_standard),
+                    nft_bids::marketplace_addr.eq(nft_bids::marketplace_addr),
+                    nft_bids::buyer_addr.eq(nft_bids::buyer_addr),
+                    nft_bids::price.eq(nft_bids::price),
+                    nft_bids::royalties.eq(nft_bids::royalties),
+                    nft_bids::commission.eq(nft_bids::commission),
+                    nft_bids::payment_token.eq(nft_bids::payment_token),
+                    nft_bids::payment_token_type.eq(nft_bids::payment_token_type),
+                    nft_bids::order_placed_timestamp.eq(nft_bids::order_placed_timestamp),
+                    nft_bids::order_placed_tx_version.eq(nft_bids::order_placed_tx_version),
+                    nft_bids::order_placed_event_idx.eq(nft_bids::order_placed_event_idx),
+                    nft_bids::order_filled_timestamp.eq(excluded(nft_bids::order_filled_timestamp)),
+                    nft_bids::order_filled_tx_version.eq(excluded(nft_bids::order_filled_tx_version)),
+                    nft_bids::order_filled_event_idx.eq(excluded(nft_bids::order_filled_event_idx)),
+                    nft_bids::order_cancelled_timestamp.eq(nft_bids::order_cancelled_timestamp),
+                    nft_bids::order_cancelled_tx_version.eq(nft_bids::order_cancelled_tx_version),
+                    nft_bids::order_cancelled_event_idx.eq(nft_bids::order_cancelled_event_idx),
+                    nft_bids::order_status.eq(excluded(nft_bids::order_status)),
+                ))
+                .filter(
+                    // Update only if previous status is open
+                    nft_bids::order_status.eq(OrderStatus::Open as i32),
+                );
+            sql.execute(conn).await?;
             Ok(())
         })
     })
     .await
 }
 
-pub async fn process_create_message_events(
+pub async fn process_bid_filled_events(
     pool: ArcDbPool,
     per_table_chunk_sizes: AHashMap<String, usize>,
-    create_events: Vec<Message>,
+    events: Vec<NftBid>,
 ) -> Result<(), ProcessorError> {
-    // Key is user address
-    // Value is (number of new messages, earliest create message time, latest create message time)
-    let mut user_stats_changes: AHashMap<String, (i64, i64, i64)> = AHashMap::new();
-    for message in create_events.clone() {
-        let (new_count, earliest_time, latest_time) = user_stats_changes
-            .get(&message.creator_addr)
-            .cloned()
-            .unwrap_or((0, i64::MAX, 0));
-        user_stats_changes.insert(
-            message.creator_addr.clone(),
-            (
-                new_count + 1,
-                cmp::min(earliest_time, message.creation_timestamp),
-                cmp::max(latest_time, message.creation_timestamp),
-            ),
-        );
-    }
-
-    let chunk_size = get_config_table_chunk_size::<Message>("messages", &per_table_chunk_sizes);
-    let tasks = create_events
+    let chunk_size = get_config_table_chunk_size::<NftBid>("nft_bids", &per_table_chunk_sizes);
+    let tasks = events
         .chunks(chunk_size)
         .map(|chunk| {
             let pool = pool.clone();
             let items = chunk.to_vec();
-            let user_stats_changes = user_stats_changes.clone();
             tokio::spawn(async move {
                 let conn = &mut get_db_connection(&pool).await.expect(
                     "Failed to get connection from pool while processing create message events",
                 );
-                execute_create_message_events_sql(conn, items, user_stats_changes).await
+                execute_sql(conn, items).await
             })
         })
         .collect::<Vec<_>>();
 
-    let results = futures_util::future::try_join_all(tasks)
-        .await
-        .expect("Task panicked executing in chunks");
-    for res in results {
-        res.map_err(|e| {
-            tracing::warn!("Error running query: {:?}", e);
-            ProcessorError::ProcessError {
-                message: e.to_string(),
-            }
-        })?;
-    }
-    Ok(())
+    handle_db_execution(tasks).await
 }

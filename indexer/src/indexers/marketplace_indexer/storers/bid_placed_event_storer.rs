@@ -9,6 +9,7 @@ use crate::{
     schema::nft_bids,
     utils::{
         database_connection::get_db_connection,
+        database_execution::handle_db_execution,
         database_utils::{get_config_table_chunk_size, ArcDbPool},
     },
 };
@@ -24,7 +25,6 @@ async fn execute_sql(
                 .on_conflict(nft_bids::bid_obj_addr)
                 .do_nothing();
             sql.execute(conn).await?;
-
             Ok(())
         })
     })
@@ -51,16 +51,5 @@ pub async fn process_bid_placed_events(
         })
         .collect::<Vec<_>>();
 
-    let results = futures_util::future::try_join_all(tasks)
-        .await
-        .expect("Task panicked executing in chunks");
-    for res in results {
-        res.map_err(|e| {
-            tracing::warn!("Error running query: {:?}", e);
-            ProcessorError::ProcessError {
-                message: e.to_string(),
-            }
-        })?;
-    }
-    Ok(())
+    handle_db_execution(tasks).await
 }

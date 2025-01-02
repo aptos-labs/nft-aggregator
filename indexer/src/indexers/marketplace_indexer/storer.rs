@@ -10,8 +10,9 @@ use async_trait::async_trait;
 use super::{
     extractor::{ContractEvent, TransactionContextData},
     storers::{
-        upgrade_module_change_storer::process_upgrade_module_changes,
-        upgrade_package_change_storer::process_upgrade_package_changes,
+        bid_cancelled_event_storer::process_bid_cancelled_events,
+        bid_filled_event_storer::process_bid_filled_events,
+        bid_placed_event_storer::process_bid_placed_events,
     },
 };
 use crate::utils::database_utils::ArcDbPool;
@@ -50,7 +51,17 @@ impl Processable for Storer {
     ) -> Result<Option<TransactionContext<TransactionContextData>>, ProcessorError> {
         let per_table_chunk_sizes: AHashMap<String, usize> = AHashMap::new();
         let data = transaction_context_data.data.clone();
-        let (create_events, update_events) = data.events.into_iter().fold(
+        let (
+            bid_placed_events,
+            bid_filled_events,
+            bid_cancelled_events,
+            ask_placed_events,
+            ask_filled_events,
+            ask_cancelled_events,
+            collection_bid_placed_events,
+            collection_bid_filled_events,
+            collection_bid_cancelled_events,
+        ) = data.events.into_iter().fold(
             (
                 vec![],
                 vec![],
@@ -112,17 +123,24 @@ impl Processable for Storer {
             },
         );
 
-        process_create_message_events(
+        process_bid_placed_events(
             self.pool.clone(),
             per_table_chunk_sizes.clone(),
-            create_events,
+            bid_placed_events,
         )
         .await?;
 
-        process_update_message_events(
+        process_bid_filled_events(
             self.pool.clone(),
             per_table_chunk_sizes.clone(),
-            update_events,
+            bid_filled_events,
+        )
+        .await?;
+
+        process_bid_cancelled_events(
+            self.pool.clone(),
+            per_table_chunk_sizes.clone(),
+            bid_cancelled_events,
         )
         .await?;
 

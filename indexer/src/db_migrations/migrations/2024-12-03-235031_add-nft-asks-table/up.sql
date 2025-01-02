@@ -13,6 +13,8 @@ CREATE TABLE
         -- 1 is token v1, 2 is token v2
         nft_standard INT NOT NULL,
         marketplace_addr VARCHAR(300) NOT NULL,
+        -- empty str when it's not filled
+        buyer_addr VARCHAR(300) NOT NULL,
         seller_addr VARCHAR(300) NOT NULL,
         -- price in on-chain unit, for APT it's oct
         price BIGINT NOT NULL,

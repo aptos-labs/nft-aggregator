@@ -16,6 +16,8 @@ CREATE TABLE
         nft_standard INT NOT NULL,
         marketplace_addr VARCHAR(300) NOT NULL,
         buyer_addr VARCHAR(300) NOT NULL,
+        -- empty str when it's not filled
+        seller_addr VARCHAR(300) NOT NULL,
         -- price in on-chain unit, for APT it's oct
         price BIGINT NOT NULL,
         -- in on-chain unit, for APT it's oct

@@ -65,12 +65,26 @@ impl Processable for Extractor {
             .data
             .par_iter()
             .map(|txn| {
-                let tx_version = txn.version as i64;
+                let txn_version = txn.version as i64;
+                match txn.info.as_ref() {
+                    Some(info) => {
+                        if !info.success {
+                            return (vec![], vec![]);
+                        }
+                    }
+                    None => {
+                        tracing::warn!(
+                            transaction_version = txn_version,
+                            "Transaction info doesn't exist"
+                        );
+                        return (vec![], vec![]);
+                    }
+                };
                 let txn_data = match txn.txn_data.as_ref() {
                     Some(data) => data,
                     None => {
                         tracing::warn!(
-                            transaction_version = tx_version,
+                            transaction_version = txn_version,
                             "Transaction data doesn't exist"
                         );
                         return (vec![], vec![]);
@@ -84,7 +98,7 @@ impl Processable for Extractor {
                 };
 
                 let txn_events =
-                    ContractEvent::from_events(&self.contract_addresses, raw_events, tx_version);
+                    ContractEvent::from_events(&self.contract_addresses, raw_events, txn_version);
 
                 (txn_events, vec![])
             })
@@ -131,7 +145,7 @@ impl ContractEvent {
         contract_addresses: &AHashSet<String>,
         event_idx: i64,
         event: &EventPB,
-        tx_version: i64,
+        txn_version: i64,
     ) -> Option<Self> {
         // use standardize_address to pad the address in event type before processing
         let parts = event.type_str.split("::").collect::<Vec<_>>();
@@ -150,7 +164,7 @@ impl ContractEvent {
                         )
                     });
                 Some(ContractEvent::BidOrderPlacedEvent(
-                    parsed_event.to_db_nft_bid(event_addr, tx_version, event_idx),
+                    parsed_event.to_db_nft_bid(event_addr, txn_version, event_idx),
                 ))
             } else if t.starts_with(format!("{}::events::BidOrderFilledEvent", event_addr).as_str())
             {
@@ -163,7 +177,7 @@ impl ContractEvent {
                         )
                     });
                 Some(ContractEvent::BidOrderFilledEvent(
-                    parsed_event.to_db_nft_bid(event_addr, tx_version, event_idx),
+                    parsed_event.to_db_nft_bid(event_addr, txn_version, event_idx),
                 ))
             } else if t
                 .starts_with(format!("{}::events::BidOrderCancelledEvent", event_addr).as_str())
@@ -178,7 +192,7 @@ impl ContractEvent {
                         )
                     });
                 Some(ContractEvent::BidOrderCancelledEvent(
-                    parsed_event.to_db_nft_bid(event_addr, tx_version, event_idx),
+                    parsed_event.to_db_nft_bid(event_addr, txn_version, event_idx),
                 ))
             } else if t.starts_with(format!("{}::events::AskOrderPlacedEvent", event_addr).as_str())
             {
@@ -191,7 +205,7 @@ impl ContractEvent {
                         )
                     });
                 Some(ContractEvent::AskOrderPlacedEvent(
-                    parsed_event.to_db_nft_ask(event_addr, tx_version, event_idx),
+                    parsed_event.to_db_nft_ask(event_addr, txn_version, event_idx),
                 ))
             } else if t.starts_with(format!("{}::events::AskOrderFilledEvent", event_addr).as_str())
             {
@@ -204,7 +218,7 @@ impl ContractEvent {
                         )
                     });
                 Some(ContractEvent::AskOrderFilledEvent(
-                    parsed_event.to_db_nft_ask(event_addr, tx_version, event_idx),
+                    parsed_event.to_db_nft_ask(event_addr, txn_version, event_idx),
                 ))
             } else if t
                 .starts_with(format!("{}::events::AskOrderCancelledEvent", event_addr).as_str())
@@ -219,7 +233,7 @@ impl ContractEvent {
                         )
                     });
                 Some(ContractEvent::AskOrderCancelledEvent(
-                    parsed_event.to_db_nft_ask(event_addr, tx_version, event_idx),
+                    parsed_event.to_db_nft_ask(event_addr, txn_version, event_idx),
                 ))
             } else if t.starts_with(
                 format!("{}::events::CollectionBidOrderPlacedEvent", event_addr).as_str(),
@@ -233,7 +247,7 @@ impl ContractEvent {
                         )
                     });
                 Some(ContractEvent::CollectionBidOrderPlacedEvent(
-                    parsed_event.to_db_collection_bid(event_addr, tx_version, event_idx),
+                    parsed_event.to_db_collection_bid(event_addr, txn_version, event_idx),
                 ))
             } else if t.starts_with(
                 format!("{}::events::CollectionBidOrderFilledEvent", event_addr).as_str(),
@@ -248,7 +262,9 @@ impl ContractEvent {
                     });
                 Some(ContractEvent::CollectionBidOrderFilledEvent(
                     parsed_event.to_db_collection_bid_and_filled_collection_bid(
-                        event_addr, tx_version, event_idx,
+                        event_addr,
+                        txn_version,
+                        event_idx,
                     ),
                 ))
             } else if t.starts_with(
@@ -265,7 +281,7 @@ impl ContractEvent {
                         )
                     });
                 Some(ContractEvent::CollectionBidOrderCancelledEvent(
-                    parsed_event.to_db_collection_bid(event_addr, tx_version, event_idx),
+                    parsed_event.to_db_collection_bid(event_addr, txn_version, event_idx),
                 ))
             } else {
                 None
@@ -278,13 +294,13 @@ impl ContractEvent {
     pub fn from_events(
         contract_addresses: &AHashSet<String>,
         events: &[EventPB],
-        tx_version: i64,
+        txn_version: i64,
     ) -> Vec<Self> {
         events
             .iter()
             .enumerate()
             .filter_map(|(idx, event)| {
-                Self::from_event(contract_addresses, idx as i64, event, tx_version)
+                Self::from_event(contract_addresses, idx as i64, event, txn_version)
             })
             .collect()
     }
