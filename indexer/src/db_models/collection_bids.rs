@@ -23,7 +23,6 @@ pub struct CollectionBid {
     pub marketplace_addr: String,
     pub buyer_addr: String,
     pub total_nft_amount: i64,
-    pub remaining_nft_amount: i64,
     pub price: i64,
     pub payment_token: String,
     pub payment_token_type: i32,
@@ -37,6 +36,7 @@ pub struct CollectionBid {
     pub order_cancelled_tx_version: i64,
     pub order_cancelled_event_idx: i64,
     pub order_status: i32,
+    pub order_expiration_timestamp: i64,
 }
 
 #[derive(AsChangeset, Clone, Debug, Deserialize, FieldCount, Insertable, Serialize)]
@@ -46,6 +46,7 @@ pub struct FilledCollectionBid {
     pub bid_obj_addr: String,
     pub nft_id: String,
     pub nft_name: String,
+    pub seller_addr: String,
     pub price: i64,
     pub royalties: i64,
     pub commission: i64,
@@ -55,7 +56,7 @@ pub struct FilledCollectionBid {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CollectionBidOrderPlacedEventOnChain {
+pub struct CollectionBidPlacedEventOnChain {
     pub collection_offer: String,
     pub purchaser: String,
     pub price: u64,
@@ -64,7 +65,7 @@ pub struct CollectionBidOrderPlacedEventOnChain {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CollectionBidOrderFilledEventOnChain {
+pub struct CollectionBidFilledEventOnChain {
     pub collection_offer: String,
     pub purchaser: String,
     pub seller: String,
@@ -75,7 +76,7 @@ pub struct CollectionBidOrderFilledEventOnChain {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CollectionBidOrderCancelledEventOnChain {
+pub struct CollectionBidCancelledEventOnChain {
     pub collection_offer: String,
     pub purchaser: String,
     pub price: u64,
@@ -83,7 +84,7 @@ pub struct CollectionBidOrderCancelledEventOnChain {
     pub collection_metadata: CollectionMetadataOnChain,
 }
 
-impl CollectionBidOrderPlacedEventOnChain {
+impl CollectionBidPlacedEventOnChain {
     pub fn to_db_collection_bid(
         &self,
         marketplace_addr: String,
@@ -98,7 +99,6 @@ impl CollectionBidOrderPlacedEventOnChain {
             nft_standard: self.collection_metadata.get_nft_standard(),
             marketplace_addr,
             total_nft_amount: self.token_amount as i64,
-            remaining_nft_amount: self.token_amount as i64,
             buyer_addr: self.purchaser.clone(),
             price: self.price as i64,
             payment_token: APT_COIN.to_string(),
@@ -113,11 +113,12 @@ impl CollectionBidOrderPlacedEventOnChain {
             order_cancelled_tx_version: 0,
             order_cancelled_event_idx: 0,
             order_status: OrderStatus::Open as i32,
+            order_expiration_timestamp: 0,
         }
     }
 }
 
-impl CollectionBidOrderFilledEventOnChain {
+impl CollectionBidFilledEventOnChain {
     pub fn to_db_collection_bid_and_filled_collection_bid(
         &self,
         marketplace_addr: String,
@@ -134,7 +135,6 @@ impl CollectionBidOrderFilledEventOnChain {
                 nft_standard: self.token_metadata.get_nft_standard(),
                 marketplace_addr,
                 total_nft_amount: 0,
-                remaining_nft_amount: 0,
                 buyer_addr: self.purchaser.clone(),
                 price: self.price as i64,
                 payment_token: APT_COIN.to_string(),
@@ -148,12 +148,16 @@ impl CollectionBidOrderFilledEventOnChain {
                 order_cancelled_timestamp: 0,
                 order_cancelled_tx_version: 0,
                 order_cancelled_event_idx: 0,
-                order_status: OrderStatus::Filled as i32,
+                // will calculate status later in the sql query
+                // status is only filled when remaining_nft_amount is 0
+                order_status: OrderStatus::Open as i32,
+                order_expiration_timestamp: 0,
             },
             FilledCollectionBid {
                 bid_obj_addr: self.collection_offer.clone(),
                 nft_id: self.token_metadata.get_id(),
                 nft_name: self.token_metadata.token_name.clone(),
+                seller_addr: self.seller.clone(),
                 price: self.price as i64,
                 royalties: self.royalties as i64,
                 commission: self.commission as i64,
@@ -165,7 +169,7 @@ impl CollectionBidOrderFilledEventOnChain {
     }
 }
 
-impl CollectionBidOrderCancelledEventOnChain {
+impl CollectionBidCancelledEventOnChain {
     pub fn to_db_collection_bid(
         &self,
         marketplace_addr: String,
@@ -180,7 +184,6 @@ impl CollectionBidOrderCancelledEventOnChain {
             nft_standard: self.collection_metadata.get_nft_standard(),
             marketplace_addr,
             total_nft_amount: 0,
-            remaining_nft_amount: 0,
             buyer_addr: self.purchaser.clone(),
             price: self.price as i64,
             payment_token: APT_COIN.to_string(),
@@ -195,6 +198,7 @@ impl CollectionBidOrderCancelledEventOnChain {
             order_cancelled_tx_version: tx_version,
             order_cancelled_event_idx: event_idx,
             order_status: OrderStatus::Cancelled as i32,
+            order_expiration_timestamp: 0,
         }
     }
 }

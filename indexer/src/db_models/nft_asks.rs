@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{schema::nft_asks, utils::utils::get_unix_timestamp_in_secs};
 
-use super::shared::{OrderStatus, PaymentTokenType, TokenMetadataOnChain, APT_COIN};
+use super::shared::{AskOrderType, OrderStatus, PaymentTokenType, TokenMetadataOnChain, APT_COIN};
 
 #[derive(AsChangeset, Clone, Debug, Deserialize, FieldCount, Insertable, Serialize)]
 #[diesel(table_name = nft_asks)]
@@ -18,6 +18,7 @@ pub struct NftAsk {
     pub collection_name: String,
     pub nft_standard: i32,
     pub marketplace_addr: String,
+    pub buyer_addr: String,
     pub seller_addr: String,
     pub price: i64,
     pub royalties: i64,
@@ -34,10 +35,19 @@ pub struct NftAsk {
     pub order_cancelled_tx_version: i64,
     pub order_cancelled_event_idx: i64,
     pub order_status: i32,
+    pub order_type: i32,
+}
+
+fn convert_on_chain_order_type_to_db_order_type(order_type: &str) -> AskOrderType {
+    match order_type {
+        "fixed price" => AskOrderType::FixedPrice,
+        "auction" => AskOrderType::Auction,
+        _ => panic!("Invalid ask order type"),
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AskOrderPlacedEventOnChain {
+pub struct AskPlacedEventOnChain {
     #[serde(rename = "type")]
     pub order_type: String,
     pub listing: String,
@@ -47,7 +57,7 @@ pub struct AskOrderPlacedEventOnChain {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AskOrderFilledEventOnChain {
+pub struct AskFilledEventOnChain {
     #[serde(rename = "type")]
     pub order_type: String,
     pub listing: String,
@@ -60,7 +70,7 @@ pub struct AskOrderFilledEventOnChain {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AskOrderCancelledEventOnChain {
+pub struct AskCancelledEventOnChain {
     #[serde(rename = "type")]
     pub order_type: String,
     pub listing: String,
@@ -69,7 +79,7 @@ pub struct AskOrderCancelledEventOnChain {
     pub token_metadata: TokenMetadataOnChain,
 }
 
-impl AskOrderPlacedEventOnChain {
+impl AskPlacedEventOnChain {
     pub fn to_db_nft_ask(
         &self,
         marketplace_addr: String,
@@ -85,6 +95,7 @@ impl AskOrderPlacedEventOnChain {
             collection_name: self.token_metadata.collection_name.clone(),
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
+            buyer_addr: "".to_string(),
             seller_addr: self.seller.clone(),
             price: self.price as i64,
             commission: 0,
@@ -101,11 +112,12 @@ impl AskOrderPlacedEventOnChain {
             order_cancelled_tx_version: 0,
             order_cancelled_event_idx: 0,
             order_status: OrderStatus::Open as i32,
+            order_type: convert_on_chain_order_type_to_db_order_type(&self.order_type) as i32,
         }
     }
 }
 
-impl AskOrderFilledEventOnChain {
+impl AskFilledEventOnChain {
     pub fn to_db_nft_ask(
         &self,
         marketplace_addr: String,
@@ -121,6 +133,7 @@ impl AskOrderFilledEventOnChain {
             collection_name: self.token_metadata.collection_name.clone(),
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
+            buyer_addr: self.purchaser.clone(),
             seller_addr: self.seller.clone(),
             price: self.price as i64,
             commission: self.commission as i64,
@@ -137,11 +150,12 @@ impl AskOrderFilledEventOnChain {
             order_cancelled_tx_version: 0,
             order_cancelled_event_idx: 0,
             order_status: OrderStatus::Filled as i32,
+            order_type: convert_on_chain_order_type_to_db_order_type(&self.order_type) as i32,
         }
     }
 }
 
-impl AskOrderCancelledEventOnChain {
+impl AskCancelledEventOnChain {
     pub fn to_db_nft_ask(
         &self,
         marketplace_addr: String,
@@ -157,6 +171,7 @@ impl AskOrderCancelledEventOnChain {
             collection_name: self.token_metadata.collection_name.clone(),
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
+            buyer_addr: "".to_string(),
             seller_addr: self.seller.clone(),
             price: self.price as i64,
             commission: 0,
@@ -173,6 +188,7 @@ impl AskOrderCancelledEventOnChain {
             order_cancelled_tx_version: tx_version,
             order_cancelled_event_idx: event_idx,
             order_status: OrderStatus::Cancelled as i32,
+            order_type: convert_on_chain_order_type_to_db_order_type(&self.order_type) as i32,
         }
     }
 }

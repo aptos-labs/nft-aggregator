@@ -1,7 +1,10 @@
 use ahash::AHashMap;
 use anyhow::Result;
 use aptos_indexer_processor_sdk::utils::errors::ProcessorError;
-use diesel::{insert_into, QueryResult};
+use diesel::{
+    insert_into, query_dsl::methods::FilterDsl, upsert::excluded, BoolExpressionMethods,
+    ExpressionMethods, QueryResult,
+};
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 
 use crate::{
@@ -23,7 +26,31 @@ async fn execute_sql(
             let sql = insert_into(collection_bids::table)
                 .values(items_to_insert.clone())
                 .on_conflict(collection_bids::bid_obj_addr)
-                .do_nothing();
+                .do_update()
+                .set((
+                    collection_bids::price.eq(excluded(collection_bids::price)),
+                    collection_bids::buyer_addr.eq(excluded(collection_bids::buyer_addr)),
+                    collection_bids::total_nft_amount.eq(excluded(collection_bids::total_nft_amount)),
+                    collection_bids::order_placed_timestamp
+                        .eq(excluded(collection_bids::order_placed_timestamp)),
+                    collection_bids::order_placed_tx_version
+                        .eq(excluded(collection_bids::order_placed_tx_version)),
+                    collection_bids::order_placed_event_idx
+                        .eq(excluded(collection_bids::order_placed_event_idx)),
+                    collection_bids::order_status.eq(excluded(collection_bids::order_status)),
+                ))
+                .filter(
+                    // Update only if tx version is greater than the existing one
+                    // or if the tx version is the same but the event index is greater
+                    collection_bids::order_placed_tx_version
+                        .lt(excluded(collection_bids::order_placed_tx_version))
+                        .or(collection_bids::order_placed_tx_version
+                            .eq(excluded(collection_bids::order_placed_tx_version))
+                            .and(
+                                collection_bids::order_placed_event_idx
+                                    .lt(excluded(collection_bids::order_placed_event_idx)),
+                            )),
+                );
             sql.execute(conn).await?;
             Ok(())
         })

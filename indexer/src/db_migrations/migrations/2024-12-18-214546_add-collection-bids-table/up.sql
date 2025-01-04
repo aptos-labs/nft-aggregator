@@ -13,7 +13,6 @@ CREATE TABLE
         marketplace_addr VARCHAR(300) NOT NULL,
         buyer_addr VARCHAR(300) NOT NULL,
         total_nft_amount BIGINT NOT NULL,
-        remaining_nft_amount BIGINT NOT NULL,
         -- price per nft in on-chain unit, for APT it's oct
         price BIGINT NOT NULL,
         -- for coin APT, this is 0x1::aptos_coin::AptosCoin
@@ -33,6 +32,7 @@ CREATE TABLE
         -- 1 is active, 2 is filled, 3 is cancelled
         -- order is only filled when remaining_nft_amount is 0
         order_status INT NOT NULL,
+        order_expiration_timestamp BIGINT NOT NULL,
         CHECK (nft_standard IN (1, 2)),
         CHECK (payment_token_type IN (1, 2)),
         CHECK (order_status IN (1, 2, 3))

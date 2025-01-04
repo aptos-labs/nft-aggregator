@@ -10,9 +10,15 @@ use async_trait::async_trait;
 use super::{
     extractor::{ContractEvent, TransactionContextData},
     storers::{
+        ask_cancelled_event_storer::process_ask_cancelled_events,
+        ask_filled_event_storer::process_ask_filled_events,
+        ask_placed_event_storer::process_ask_placed_events,
         bid_cancelled_event_storer::process_bid_cancelled_events,
         bid_filled_event_storer::process_bid_filled_events,
         bid_placed_event_storer::process_bid_placed_events,
+        collection_bid_cancelled_event_storer::process_collection_bid_cancelled_events,
+        collection_bid_filled_event_storer::process_collection_bid_filled_events,
+        collection_bid_placed_event_storer::process_collection_bid_placed_events,
     },
 };
 use crate::utils::database_utils::ArcDbPool;
@@ -86,26 +92,22 @@ impl Processable for Storer {
             ),
              event| {
                 match event {
-                    ContractEvent::BidOrderPlacedEvent(nft_bid) => bid_placed_events.push(nft_bid),
-                    ContractEvent::BidOrderFilledEvent(nft_bid) => bid_filled_events.push(nft_bid),
-                    ContractEvent::BidOrderCancelledEvent(nft_bid) => {
-                        bid_cancelled_events.push(nft_bid)
-                    }
-                    ContractEvent::AskOrderPlacedEvent(nft_ask) => ask_placed_events.push(nft_ask),
-                    ContractEvent::AskOrderFilledEvent(nft_ask) => ask_filled_events.push(nft_ask),
-                    ContractEvent::AskOrderCancelledEvent(nft_ask) => {
-                        ask_cancelled_events.push(nft_ask)
-                    }
-                    ContractEvent::CollectionBidOrderPlacedEvent(collection_bid) => {
+                    ContractEvent::BidPlacedEvent(nft_bid) => bid_placed_events.push(nft_bid),
+                    ContractEvent::BidFilledEvent(nft_bid) => bid_filled_events.push(nft_bid),
+                    ContractEvent::BidCancelledEvent(nft_bid) => bid_cancelled_events.push(nft_bid),
+                    ContractEvent::AskPlacedEvent(nft_ask) => ask_placed_events.push(nft_ask),
+                    ContractEvent::AskFilledEvent(nft_ask) => ask_filled_events.push(nft_ask),
+                    ContractEvent::AskCancelledEvent(nft_ask) => ask_cancelled_events.push(nft_ask),
+                    ContractEvent::CollectionBidPlacedEvent(collection_bid) => {
                         collection_bid_placed_events.push(collection_bid)
                     }
-                    ContractEvent::CollectionBidOrderFilledEvent((
+                    ContractEvent::CollectionBidFilledEvent((
                         collection_bid,
                         filled_collection_bid,
                     )) => {
                         collection_bid_filled_events.push((collection_bid, filled_collection_bid))
                     }
-                    ContractEvent::CollectionBidOrderCancelledEvent(collection_bid) => {
+                    ContractEvent::CollectionBidCancelledEvent(collection_bid) => {
                         collection_bid_cancelled_events.push(collection_bid)
                     }
                 }
@@ -141,6 +143,48 @@ impl Processable for Storer {
             self.pool.clone(),
             per_table_chunk_sizes.clone(),
             bid_cancelled_events,
+        )
+        .await?;
+
+        process_ask_placed_events(
+            self.pool.clone(),
+            per_table_chunk_sizes.clone(),
+            ask_placed_events,
+        )
+        .await?;
+
+        process_ask_filled_events(
+            self.pool.clone(),
+            per_table_chunk_sizes.clone(),
+            ask_filled_events,
+        )
+        .await?;
+
+        process_ask_cancelled_events(
+            self.pool.clone(),
+            per_table_chunk_sizes.clone(),
+            ask_cancelled_events,
+        )
+        .await?;
+
+        process_collection_bid_placed_events(
+            self.pool.clone(),
+            per_table_chunk_sizes.clone(),
+            collection_bid_placed_events,
+        )
+        .await?;
+
+        process_collection_bid_filled_events(
+            self.pool.clone(),
+            per_table_chunk_sizes.clone(),
+            collection_bid_filled_events,
+        )
+        .await?;
+
+        process_collection_bid_cancelled_events(
+            self.pool.clone(),
+            per_table_chunk_sizes.clone(),
+            collection_bid_cancelled_events,
         )
         .await?;
 

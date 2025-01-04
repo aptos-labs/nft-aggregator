@@ -40,6 +40,7 @@ CREATE TABLE
         order_cancelled_event_idx BIGINT NOT NULL,
         -- 1 is active, 2 is filled, 3 is cancelled
         order_status INT NOT NULL,
+        order_expiration_timestamp BIGINT NOT NULL,
         CHECK (nft_standard IN (1, 2)),
         CHECK (payment_token_type IN (1, 2)),
         CHECK (order_status IN (1, 2, 3))

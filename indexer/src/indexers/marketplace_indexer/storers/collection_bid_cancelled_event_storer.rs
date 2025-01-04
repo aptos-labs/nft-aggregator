@@ -2,12 +2,13 @@ use ahash::AHashMap;
 use anyhow::Result;
 use aptos_indexer_processor_sdk::utils::errors::ProcessorError;
 use diesel::{
-    insert_into, query_dsl::methods::FilterDsl, upsert::excluded, ExpressionMethods, QueryResult,
+    insert_into, query_dsl::methods::FilterDsl, upsert::excluded, BoolExpressionMethods,
+    ExpressionMethods, QueryResult,
 };
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 
 use crate::{
-    db_models::{collection_bids::CollectionBid, shared::OrderStatus},
+    db_models::collection_bids::CollectionBid,
     schema::collection_bids,
     utils::{
         database_connection::get_db_connection,
@@ -27,29 +28,7 @@ async fn execute_sql(
                 .on_conflict(collection_bids::bid_obj_addr)
                 .do_update()
                 .set((
-                    collection_bids::bid_obj_addr.eq(collection_bids::bid_obj_addr),
-                    collection_bids::collection_addr.eq(collection_bids::collection_addr),
-                    collection_bids::collection_creator_addr
-                        .eq(collection_bids::collection_creator_addr),
-                    collection_bids::collection_name.eq(collection_bids::collection_name),
-                    collection_bids::nft_standard.eq(collection_bids::nft_standard),
-                    collection_bids::marketplace_addr.eq(collection_bids::marketplace_addr),
-                    collection_bids::buyer_addr.eq(collection_bids::buyer_addr),
-                    collection_bids::price.eq(collection_bids::price),
-                    collection_bids::payment_token.eq(collection_bids::payment_token),
-                    collection_bids::payment_token_type.eq(collection_bids::payment_token_type),
-                    collection_bids::order_placed_timestamp
-                        .eq(collection_bids::order_placed_timestamp),
-                    collection_bids::order_placed_tx_version
-                        .eq(collection_bids::order_placed_tx_version),
-                    collection_bids::order_placed_event_idx
-                        .eq(collection_bids::order_placed_event_idx),
-                    collection_bids::latest_order_filled_event_idx
-                        .eq(collection_bids::latest_order_filled_event_idx),
-                    collection_bids::latest_order_filled_timestamp
-                        .eq(collection_bids::latest_order_filled_timestamp),
-                    collection_bids::latest_order_filled_tx_version
-                        .eq(collection_bids::latest_order_filled_tx_version),
+                    collection_bids::price.eq(excluded(collection_bids::price)),
                     collection_bids::order_cancelled_timestamp
                         .eq(excluded(collection_bids::order_cancelled_timestamp)),
                     collection_bids::order_cancelled_tx_version
@@ -59,8 +38,16 @@ async fn execute_sql(
                     collection_bids::order_status.eq(excluded(collection_bids::order_status)),
                 ))
                 .filter(
-                    // Update only if previous status is open
-                    collection_bids::order_status.eq(OrderStatus::Open as i32),
+                    // Update only if tx version is greater than the existing one
+                    // or if the tx version is the same but the event index is greater
+                    collection_bids::order_cancelled_tx_version
+                        .lt(excluded(collection_bids::order_cancelled_tx_version))
+                        .or(collection_bids::order_cancelled_tx_version
+                            .eq(excluded(collection_bids::order_cancelled_tx_version))
+                            .and(
+                                collection_bids::order_cancelled_event_idx
+                                    .lt(excluded(collection_bids::order_cancelled_event_idx)),
+                            )),
                 );
             sql.execute(conn).await?;
             Ok(())
@@ -69,7 +56,7 @@ async fn execute_sql(
     .await
 }
 
-pub async fn process_bid_cancelled_events(
+pub async fn process_collection_bid_cancelled_events(
     pool: ArcDbPool,
     per_table_chunk_sizes: AHashMap<String, usize>,
     events: Vec<CollectionBid>,

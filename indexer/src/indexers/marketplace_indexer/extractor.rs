@@ -13,18 +13,11 @@ use rayon::prelude::*;
 
 use crate::db_models::{
     collection_bids::{
-        CollectionBid, CollectionBidOrderCancelledEventOnChain,
-        CollectionBidOrderFilledEventOnChain, CollectionBidOrderPlacedEventOnChain,
-        FilledCollectionBid,
+        CollectionBid, CollectionBidCancelledEventOnChain, CollectionBidFilledEventOnChain,
+        CollectionBidPlacedEventOnChain, FilledCollectionBid,
     },
-    nft_asks::{
-        AskOrderCancelledEventOnChain, AskOrderFilledEventOnChain, AskOrderPlacedEventOnChain,
-        NftAsk,
-    },
-    nft_bids::{
-        BidOrderCancelledEventOnChain, BidOrderFilledEventOnChain, BidOrderPlacedEventOnChain,
-        NftBid,
-    },
+    nft_asks::{AskCancelledEventOnChain, AskFilledEventOnChain, AskPlacedEventOnChain, NftAsk},
+    nft_bids::{BidCancelledEventOnChain, BidFilledEventOnChain, BidPlacedEventOnChain, NftBid},
 };
 
 /// Extractor is a step that extracts events and their metadata from transactions.
@@ -129,15 +122,15 @@ pub struct TransactionContextData {
 
 #[derive(Debug, Clone)]
 pub enum ContractEvent {
-    BidOrderPlacedEvent(NftBid),
-    BidOrderFilledEvent(NftBid),
-    BidOrderCancelledEvent(NftBid),
-    AskOrderPlacedEvent(NftAsk),
-    AskOrderFilledEvent(NftAsk),
-    AskOrderCancelledEvent(NftAsk),
-    CollectionBidOrderPlacedEvent(CollectionBid),
-    CollectionBidOrderFilledEvent((CollectionBid, FilledCollectionBid)),
-    CollectionBidOrderCancelledEvent(CollectionBid),
+    BidPlacedEvent(NftBid),
+    BidFilledEvent(NftBid),
+    BidCancelledEvent(NftBid),
+    AskPlacedEvent(NftAsk),
+    AskFilledEvent(NftAsk),
+    AskCancelledEvent(NftAsk),
+    CollectionBidPlacedEvent(CollectionBid),
+    CollectionBidFilledEvent((CollectionBid, FilledCollectionBid)),
+    CollectionBidCancelledEvent(CollectionBid),
 }
 
 impl ContractEvent {
@@ -154,113 +147,98 @@ impl ContractEvent {
         let should_include = contract_addresses.contains(event_addr.as_str());
 
         if should_include {
-            if t.starts_with(format!("{}::events::BidOrderPlacedEvent", event_addr).as_str()) {
-                println!("BidOrderPlacedEvent {}", event.data.as_str());
-                let parsed_event: BidOrderPlacedEventOnChain =
-                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
-                        panic!(
-                            "Failed to parse BidOrderPlacedEvent, {}",
-                            event.data.as_str()
-                        )
+            if t.starts_with(format!("{}::events::TokenOfferPlaced", event_addr).as_str()) {
+                println!("BidPlacedEvent {}", event.data.as_str());
+                let parsed_event: BidPlacedEventOnChain = serde_json::from_str(event.data.as_str())
+                    .unwrap_or_else(|_| {
+                        panic!("Failed to parse BidPlacedEvent, {}", event.data.as_str())
                     });
-                Some(ContractEvent::BidOrderPlacedEvent(
+                Some(ContractEvent::BidPlacedEvent(parsed_event.to_db_nft_bid(
+                    event_addr,
+                    txn_version,
+                    event_idx,
+                )))
+            } else if t.starts_with(format!("{}::events::TokenOfferFilled", event_addr).as_str()) {
+                println!("BidFilledEvent {}", event.data.as_str());
+                let parsed_event: BidFilledEventOnChain = serde_json::from_str(event.data.as_str())
+                    .unwrap_or_else(|_| {
+                        panic!("Failed to parse BidFilledEvent, {}", event.data.as_str())
+                    });
+                Some(ContractEvent::BidFilledEvent(parsed_event.to_db_nft_bid(
+                    event_addr,
+                    txn_version,
+                    event_idx,
+                )))
+            } else if t.starts_with(format!("{}::events::TokenOfferCanceled", event_addr).as_str())
+                || t.starts_with(format!("{}::events::TokenOfferCancelled", event_addr).as_str())
+            {
+                println!("BidCancelledEvent {}", event.data.as_str());
+                let parsed_event: BidCancelledEventOnChain =
+                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
+                        panic!("Failed to parse BidCancelledEvent, {}", event.data.as_str())
+                    });
+                Some(ContractEvent::BidCancelledEvent(
                     parsed_event.to_db_nft_bid(event_addr, txn_version, event_idx),
                 ))
-            } else if t.starts_with(format!("{}::events::BidOrderFilledEvent", event_addr).as_str())
-            {
-                println!("BidOrderFilledEvent {}", event.data.as_str());
-                let parsed_event: BidOrderFilledEventOnChain =
-                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
-                        panic!(
-                            "Failed to parse BidOrderFilledEvent, {}",
-                            event.data.as_str()
-                        )
+            } else if t.starts_with(format!("{}::events::ListingPlaced", event_addr).as_str()) {
+                println!("AskPlacedEvent {}", event.data.as_str());
+                let parsed_event: AskPlacedEventOnChain = serde_json::from_str(event.data.as_str())
+                    .unwrap_or_else(|_| {
+                        panic!("Failed to parse AskPlacedEvent, {}", event.data.as_str())
                     });
-                Some(ContractEvent::BidOrderFilledEvent(
-                    parsed_event.to_db_nft_bid(event_addr, txn_version, event_idx),
+                Some(ContractEvent::AskPlacedEvent(parsed_event.to_db_nft_ask(
+                    event_addr,
+                    txn_version,
+                    event_idx,
+                )))
+            } else if t.starts_with(format!("{}::events::ListingFilled", event_addr).as_str()) {
+                println!("AskFilledEvent {}", event.data.as_str());
+                let parsed_event: AskFilledEventOnChain = serde_json::from_str(event.data.as_str())
+                    .unwrap_or_else(|_| {
+                        panic!("Failed to parse AskFilledEvent, {}", event.data.as_str())
+                    });
+                Some(ContractEvent::AskFilledEvent(parsed_event.to_db_nft_ask(
+                    event_addr,
+                    txn_version,
+                    event_idx,
+                )))
+            } else if t.starts_with(format!("{}::events::ListingCancelled", event_addr).as_str())
+                || t.starts_with(format!("{}::events::ListingCanceled", event_addr).as_str())
+            {
+                println!("AskCancelledEvent {}", event.data.as_str());
+                let parsed_event: AskCancelledEventOnChain =
+                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
+                        panic!("Failed to parse AskCancelledEvent, {}", event.data.as_str())
+                    });
+                Some(ContractEvent::AskCancelledEvent(
+                    parsed_event.to_db_nft_ask(event_addr, txn_version, event_idx),
                 ))
             } else if t
-                .starts_with(format!("{}::events::BidOrderCancelledEvent", event_addr).as_str())
-                || t.starts_with(format!("{}::events::BidOrderCanceledEvent", event_addr).as_str())
+                .starts_with(format!("{}::events::CollectionOfferPlaced", event_addr).as_str())
             {
-                println!("BidOrderCancelledEvent {}", event.data.as_str());
-                let parsed_event: BidOrderCancelledEventOnChain =
+                println!("CollectionBidPlacedEvent {}", event.data.as_str());
+                let parsed_event: CollectionBidPlacedEventOnChain =
                     serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
                         panic!(
-                            "Failed to parse BidOrderCancelledEvent, {}",
+                            "Failed to parse CollectionBidPlacedEvent, {}",
                             event.data.as_str()
                         )
                     });
-                Some(ContractEvent::BidOrderCancelledEvent(
-                    parsed_event.to_db_nft_bid(event_addr, txn_version, event_idx),
-                ))
-            } else if t.starts_with(format!("{}::events::AskOrderPlacedEvent", event_addr).as_str())
-            {
-                println!("AskOrderPlacedEvent {}", event.data.as_str());
-                let parsed_event: AskOrderPlacedEventOnChain =
-                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
-                        panic!(
-                            "Failed to parse AskOrderPlacedEvent, {}",
-                            event.data.as_str()
-                        )
-                    });
-                Some(ContractEvent::AskOrderPlacedEvent(
-                    parsed_event.to_db_nft_ask(event_addr, txn_version, event_idx),
-                ))
-            } else if t.starts_with(format!("{}::events::AskOrderFilledEvent", event_addr).as_str())
-            {
-                println!("AskOrderFilledEvent {}", event.data.as_str());
-                let parsed_event: AskOrderFilledEventOnChain =
-                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
-                        panic!(
-                            "Failed to parse AskOrderFilledEvent, {}",
-                            event.data.as_str()
-                        )
-                    });
-                Some(ContractEvent::AskOrderFilledEvent(
-                    parsed_event.to_db_nft_ask(event_addr, txn_version, event_idx),
-                ))
-            } else if t
-                .starts_with(format!("{}::events::AskOrderCancelledEvent", event_addr).as_str())
-                || t.starts_with(format!("{}::events::AskOrderCanceledEvent", event_addr).as_str())
-            {
-                println!("AskOrderCancelledEvent {}", event.data.as_str());
-                let parsed_event: AskOrderCancelledEventOnChain =
-                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
-                        panic!(
-                            "Failed to parse AskOrderCancelledEvent, {}",
-                            event.data.as_str()
-                        )
-                    });
-                Some(ContractEvent::AskOrderCancelledEvent(
-                    parsed_event.to_db_nft_ask(event_addr, txn_version, event_idx),
-                ))
-            } else if t.starts_with(
-                format!("{}::events::CollectionBidOrderPlacedEvent", event_addr).as_str(),
-            ) {
-                println!("CollectionBidOrderPlacedEvent {}", event.data.as_str());
-                let parsed_event: CollectionBidOrderPlacedEventOnChain =
-                    serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
-                        panic!(
-                            "Failed to parse CollectionBidOrderPlacedEvent, {}",
-                            event.data.as_str()
-                        )
-                    });
-                Some(ContractEvent::CollectionBidOrderPlacedEvent(
+                Some(ContractEvent::CollectionBidPlacedEvent(
                     parsed_event.to_db_collection_bid(event_addr, txn_version, event_idx),
                 ))
-            } else if t.starts_with(
-                format!("{}::events::CollectionBidOrderFilledEvent", event_addr).as_str(),
-            ) {
-                println!("CollectionBidOrderFilledEvent {}", event.data.as_str());
-                let parsed_event: CollectionBidOrderFilledEventOnChain =
+            } else if t
+                .starts_with(format!("{}::events::CollectionOfferFilled", event_addr).as_str())
+            {
+                println!("CollectionBidFilledEvent {}", event.data.as_str());
+                let parsed_event: CollectionBidFilledEventOnChain =
                     serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
                         panic!(
-                            "Failed to parse CollectionBidOrderFilledEvent, {}",
+                            "Failed to parse CollectionBidFilledEvent, {}",
                             event.data.as_str()
                         )
                     });
-                Some(ContractEvent::CollectionBidOrderFilledEvent(
+                Some(ContractEvent::CollectionBidFilledEvent(
                     parsed_event.to_db_collection_bid_and_filled_collection_bid(
                         event_addr,
                         txn_version,
@@ -268,19 +246,19 @@ impl ContractEvent {
                     ),
                 ))
             } else if t.starts_with(
-                format!("{}::events::CollectionBidOrderCancelledEvent", event_addr).as_str(),
-            ) || t.starts_with(
-                format!("{}::events::CollectionBidOrderCanceledEvent", event_addr).as_str(),
-            ) {
-                println!("CollectionBidOrderCancelledEvent {}", event.data.as_str());
-                let parsed_event: CollectionBidOrderCancelledEventOnChain =
+                format!("{}::events::CollectionOfferCancelled", event_addr).as_str(),
+            ) || t
+                .starts_with(format!("{}::events::CollectionOfferCanceled", event_addr).as_str())
+            {
+                println!("CollectionBidCancelledEvent {}", event.data.as_str());
+                let parsed_event: CollectionBidCancelledEventOnChain =
                     serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
                         panic!(
-                            "Failed to parse CollectionBidOrderCancelledEvent, {}",
+                            "Failed to parse CollectionBidCancelledEvent, {}",
                             event.data.as_str()
                         )
                     });
-                Some(ContractEvent::CollectionBidOrderCancelledEvent(
+                Some(ContractEvent::CollectionBidCancelledEvent(
                     parsed_event.to_db_collection_bid(event_addr, txn_version, event_idx),
                 ))
             } else {

@@ -19,6 +19,11 @@ pub enum OrderStatus {
     Cancelled = 3,
 }
 
+pub enum AskOrderType {
+    FixedPrice = 1,
+    Auction = 2,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CollectionMetadataOnChain {
     pub creator_address: String,

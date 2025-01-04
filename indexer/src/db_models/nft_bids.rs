@@ -19,6 +19,7 @@ pub struct NftBid {
     pub nft_standard: i32,
     pub marketplace_addr: String,
     pub buyer_addr: String,
+    pub seller_addr: String,
     pub price: i64,
     pub royalties: i64,
     pub commission: i64,
@@ -34,10 +35,11 @@ pub struct NftBid {
     pub order_cancelled_tx_version: i64,
     pub order_cancelled_event_idx: i64,
     pub order_status: i32,
+    pub order_expiration_timestamp: i64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct BidOrderPlacedEventOnChain {
+pub struct BidPlacedEventOnChain {
     pub token_offer: String,
     pub purchaser: String,
     pub price: u64,
@@ -45,7 +47,7 @@ pub struct BidOrderPlacedEventOnChain {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct BidOrderFilledEventOnChain {
+pub struct BidFilledEventOnChain {
     pub token_offer: String,
     pub purchaser: String,
     pub seller: String,
@@ -56,14 +58,14 @@ pub struct BidOrderFilledEventOnChain {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct BidOrderCancelledEventOnChain {
+pub struct BidCancelledEventOnChain {
     pub token_offer: String,
     pub purchaser: String,
     pub price: u64,
     pub token_metadata: TokenMetadataOnChain,
 }
 
-impl BidOrderPlacedEventOnChain {
+impl BidPlacedEventOnChain {
     pub fn to_db_nft_bid(
         &self,
         marketplace_addr: String,
@@ -80,6 +82,7 @@ impl BidOrderPlacedEventOnChain {
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
             buyer_addr: self.purchaser.clone(),
+            seller_addr: "".to_string(),
             price: self.price as i64,
             commission: 0,
             royalties: 0,
@@ -95,11 +98,12 @@ impl BidOrderPlacedEventOnChain {
             order_cancelled_tx_version: 0,
             order_cancelled_event_idx: 0,
             order_status: OrderStatus::Open as i32,
+            order_expiration_timestamp: 0,
         }
     }
 }
 
-impl BidOrderFilledEventOnChain {
+impl BidFilledEventOnChain {
     pub fn to_db_nft_bid(
         &self,
         marketplace_addr: String,
@@ -116,6 +120,7 @@ impl BidOrderFilledEventOnChain {
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
             buyer_addr: self.purchaser.clone(),
+            seller_addr: self.seller.clone(),
             price: self.price as i64,
             commission: self.commission as i64,
             royalties: self.royalties as i64,
@@ -131,11 +136,12 @@ impl BidOrderFilledEventOnChain {
             order_cancelled_tx_version: 0,
             order_cancelled_event_idx: 0,
             order_status: OrderStatus::Filled as i32,
+            order_expiration_timestamp: 0,
         }
     }
 }
 
-impl BidOrderCancelledEventOnChain {
+impl BidCancelledEventOnChain {
     pub fn to_db_nft_bid(
         &self,
         marketplace_addr: String,
@@ -152,6 +158,7 @@ impl BidOrderCancelledEventOnChain {
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
             buyer_addr: self.purchaser.clone(),
+            seller_addr: "".to_string(),
             price: self.price as i64,
             commission: 0,
             royalties: 0,
@@ -167,6 +174,7 @@ impl BidOrderCancelledEventOnChain {
             order_cancelled_tx_version: tx_version,
             order_cancelled_event_idx: event_idx,
             order_status: OrderStatus::Cancelled as i32,
+            order_expiration_timestamp: 0,
         }
     }
 }

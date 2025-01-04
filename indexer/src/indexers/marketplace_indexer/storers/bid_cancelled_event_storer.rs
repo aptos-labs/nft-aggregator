@@ -2,12 +2,13 @@ use ahash::AHashMap;
 use anyhow::Result;
 use aptos_indexer_processor_sdk::utils::errors::ProcessorError;
 use diesel::{
-    insert_into, query_dsl::methods::FilterDsl, upsert::excluded, ExpressionMethods, QueryResult,
+    insert_into, query_dsl::methods::FilterDsl, upsert::excluded, BoolExpressionMethods,
+    ExpressionMethods, QueryResult,
 };
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 
 use crate::{
-    db_models::{nft_bids::NftBid, shared::OrderStatus},
+    db_models::nft_bids::NftBid,
     schema::nft_bids,
     utils::{
         database_connection::get_db_connection,
@@ -27,26 +28,7 @@ async fn execute_sql(
                 .on_conflict(nft_bids::bid_obj_addr)
                 .do_update()
                 .set((
-                    nft_bids::bid_obj_addr.eq(nft_bids::bid_obj_addr),
-                    nft_bids::nft_id.eq(nft_bids::nft_id),
-                    nft_bids::nft_name.eq(nft_bids::nft_name),
-                    nft_bids::collection_addr.eq(nft_bids::collection_addr),
-                    nft_bids::collection_creator_addr.eq(nft_bids::collection_creator_addr),
-                    nft_bids::collection_name.eq(nft_bids::collection_name),
-                    nft_bids::nft_standard.eq(nft_bids::nft_standard),
-                    nft_bids::marketplace_addr.eq(nft_bids::marketplace_addr),
-                    nft_bids::buyer_addr.eq(nft_bids::buyer_addr),
-                    nft_bids::price.eq(nft_bids::price),
-                    nft_bids::royalties.eq(nft_bids::royalties),
-                    nft_bids::commission.eq(nft_bids::commission),
-                    nft_bids::payment_token.eq(nft_bids::payment_token),
-                    nft_bids::payment_token_type.eq(nft_bids::payment_token_type),
-                    nft_bids::order_placed_timestamp.eq(nft_bids::order_placed_timestamp),
-                    nft_bids::order_placed_tx_version.eq(nft_bids::order_placed_tx_version),
-                    nft_bids::order_placed_event_idx.eq(nft_bids::order_placed_event_idx),
-                    nft_bids::order_filled_timestamp.eq(nft_bids::order_filled_timestamp),
-                    nft_bids::order_filled_tx_version.eq(nft_bids::order_filled_tx_version),
-                    nft_bids::order_filled_event_idx.eq(nft_bids::order_filled_event_idx),
+                    nft_bids::price.eq(excluded(nft_bids::price)),
                     nft_bids::order_cancelled_timestamp
                         .eq(excluded(nft_bids::order_cancelled_timestamp)),
                     nft_bids::order_cancelled_tx_version
@@ -56,8 +38,16 @@ async fn execute_sql(
                     nft_bids::order_status.eq(excluded(nft_bids::order_status)),
                 ))
                 .filter(
-                    // Update only if previous status is open
-                    nft_bids::order_status.eq(OrderStatus::Open as i32),
+                    // Update only if tx version is greater than the existing one
+                    // or if the tx version is the same but the event index is greater
+                    nft_bids::order_cancelled_tx_version
+                        .lt(excluded(nft_bids::order_cancelled_tx_version))
+                        .or(nft_bids::order_cancelled_tx_version
+                            .eq(excluded(nft_bids::order_cancelled_tx_version))
+                            .and(
+                                nft_bids::order_cancelled_event_idx
+                                    .lt(excluded(nft_bids::order_cancelled_event_idx)),
+                            )),
                 );
             sql.execute(conn).await?;
             Ok(())

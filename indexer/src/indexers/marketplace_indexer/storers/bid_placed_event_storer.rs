@@ -1,7 +1,10 @@
 use ahash::AHashMap;
 use anyhow::Result;
 use aptos_indexer_processor_sdk::utils::errors::ProcessorError;
-use diesel::{insert_into, QueryResult};
+use diesel::{
+    insert_into, query_dsl::methods::FilterDsl, upsert::excluded, BoolExpressionMethods,
+    ExpressionMethods, QueryResult,
+};
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 
 use crate::{
@@ -23,7 +26,28 @@ async fn execute_sql(
             let sql = insert_into(nft_bids::table)
                 .values(items_to_insert.clone())
                 .on_conflict(nft_bids::bid_obj_addr)
-                .do_nothing();
+                .do_update()
+                .set((
+                    nft_bids::buyer_addr.eq(excluded(nft_bids::buyer_addr)),
+                    nft_bids::price.eq(excluded(nft_bids::price)),
+                    nft_bids::order_placed_timestamp.eq(excluded(nft_bids::order_placed_timestamp)),
+                    nft_bids::order_placed_tx_version
+                        .eq(excluded(nft_bids::order_placed_tx_version)),
+                    nft_bids::order_placed_event_idx.eq(excluded(nft_bids::order_placed_event_idx)),
+                    nft_bids::order_status.eq(excluded(nft_bids::order_status)),
+                ))
+                .filter(
+                    // Update only if tx version is greater than the existing one
+                    // or if the tx version is the same but the event index is greater
+                    nft_bids::order_placed_tx_version
+                        .lt(excluded(nft_bids::order_placed_tx_version))
+                        .or(nft_bids::order_placed_tx_version
+                            .eq(excluded(nft_bids::order_placed_tx_version))
+                            .and(
+                                nft_bids::order_placed_event_idx
+                                    .lt(excluded(nft_bids::order_placed_event_idx)),
+                            )),
+                );
             sql.execute(conn).await?;
             Ok(())
         })
