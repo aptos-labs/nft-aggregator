@@ -4,6 +4,9 @@ server_config:
     type: "marketplace_indexer"
   transaction_stream_config:
     indexer_grpc_data_service_address: "https://grpc.mainnet.aptoslabs.com:443"
+    # rarible starting version: 1011760686
+    # wapal starting version:    216804176
+    # tradeport starting version: 94194505
     starting_version: 1
     # request_ending_version: 10000
     auth_token: ""
