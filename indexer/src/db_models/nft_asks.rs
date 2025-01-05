@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{schema::nft_asks, utils::utils::get_unix_timestamp_in_secs};
 
-use super::shared::{AskOrderType, OrderStatus, PaymentTokenType, TokenMetadataOnChain, APT_COIN};
+use super::shared::{
+    AskOrderType, NftV1TokenId, OrderStatus, PaymentTokenType, TokenMetadataOnChain, APT_COIN,
+};
 
 #[derive(AsChangeset, Clone, Debug, Deserialize, FieldCount, Insertable, Serialize)]
 #[diesel(table_name = nft_asks)]
@@ -77,6 +79,44 @@ pub struct AskCancelledEventOnChain {
     pub seller: String,
     pub price: u64,
     pub token_metadata: TokenMetadataOnChain,
+}
+
+// Tradeport v1 InsertListingEvent
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TradeportV1AskPlacedEventOnChain {
+    pub timestamp: u64,
+    pub token_id: NftV1TokenId,
+    pub price: u64,
+    pub owner: String,
+}
+
+// Tradeport v1 UpdateListingEvent
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TradeportV1AskUpdatedEventOnChain {
+    pub timestamp: u64,
+    pub token_id: NftV1TokenId,
+    pub price: u64,
+    pub old_price: u64,
+    pub owner: String,
+}
+
+// Tradeport v1 DeleteListingEvent
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TradeportV1AskCancelledEventOnChain {
+    pub timestamp: u64,
+    pub token_id: NftV1TokenId,
+    pub price: u64,
+    pub owner: String,
+}
+
+// Tradeport v1 BuyEvent
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TradeportV1AskFilledEventOnChain {
+    pub timestamp: u64,
+    pub token_id: NftV1TokenId,
+    pub price: u64,
+    pub owner: String,
+    pub buyer: String,
 }
 
 impl AskPlacedEventOnChain {
