@@ -21,4 +21,4 @@ local.config.yaml
 cloud.config.yaml
 config.yaml
 contract_upgrade_indexer_config.yaml
-marketplace_indexer_config.yaml
+*_marketplace_indexer_config.yaml
