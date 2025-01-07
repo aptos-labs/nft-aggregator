@@ -4,7 +4,7 @@ CREATE TABLE
     collection_bids (
         bid_obj_addr VARCHAR(300) PRIMARY KEY,
         -- For v2 NFTs, we use collection_addr to identify the collection
-        collection_addr VARCHAR(300),
+        collection_addr VARCHAR(300) NOT NULL,
         -- For v1 NFTs, we use creator_addr + name to identify the collection
         collection_creator_addr VARCHAR(300) NOT NULL,
         collection_name VARCHAR(300) NOT NULL,

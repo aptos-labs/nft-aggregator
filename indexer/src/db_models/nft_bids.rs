@@ -1,3 +1,4 @@
+use aptos_indexer_processor_sdk::utils::convert::standardize_address;
 use diesel::{AsChangeset, Insertable};
 use field_count::FieldCount;
 use serde::{Deserialize, Serialize};
@@ -13,7 +14,7 @@ pub struct NftBid {
     pub bid_obj_addr: String,
     pub nft_id: String,
     pub nft_name: String,
-    pub collection_addr: Option<String>,
+    pub collection_addr: String,
     pub collection_creator_addr: String,
     pub collection_name: String,
     pub nft_standard: i32,
@@ -42,7 +43,7 @@ pub struct NftBid {
 pub struct BidPlacedEventOnChain {
     pub token_offer: String,
     pub purchaser: String,
-    pub price: u64,
+    pub price: String,
     pub token_metadata: TokenMetadataOnChain,
 }
 
@@ -51,9 +52,9 @@ pub struct BidFilledEventOnChain {
     pub token_offer: String,
     pub purchaser: String,
     pub seller: String,
-    pub price: u64,
-    pub royalties: u64,
-    pub commission: u64,
+    pub price: String,
+    pub royalties: String,
+    pub commission: String,
     pub token_metadata: TokenMetadataOnChain,
 }
 
@@ -61,7 +62,7 @@ pub struct BidFilledEventOnChain {
 pub struct BidCancelledEventOnChain {
     pub token_offer: String,
     pub purchaser: String,
-    pub price: u64,
+    pub price: String,
     pub token_metadata: TokenMetadataOnChain,
 }
 
@@ -73,17 +74,19 @@ impl BidPlacedEventOnChain {
         event_idx: i64,
     ) -> NftBid {
         NftBid {
-            bid_obj_addr: self.token_offer.clone(),
+            bid_obj_addr: standardize_address(self.token_offer.as_str()),
             nft_id: self.token_metadata.get_id(),
             nft_name: self.token_metadata.token_name.clone(),
-            collection_addr: self.token_metadata.collection.clone(),
-            collection_creator_addr: self.token_metadata.creator_address.clone(),
+            collection_addr: self.token_metadata.get_collection_addr().clone(),
+            collection_creator_addr: standardize_address(
+                self.token_metadata.creator_address.as_str(),
+            ),
             collection_name: self.token_metadata.collection_name.clone(),
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
-            buyer_addr: self.purchaser.clone(),
+            buyer_addr: standardize_address(self.purchaser.as_str()),
             seller_addr: "".to_string(),
-            price: self.price as i64,
+            price: self.price.parse().unwrap(),
             commission: 0,
             royalties: 0,
             payment_token: APT_COIN.to_string(),
@@ -111,19 +114,21 @@ impl BidFilledEventOnChain {
         event_idx: i64,
     ) -> NftBid {
         NftBid {
-            bid_obj_addr: self.token_offer.clone(),
+            bid_obj_addr: standardize_address(self.token_offer.as_str()),
             nft_id: self.token_metadata.get_id(),
             nft_name: self.token_metadata.token_name.clone(),
-            collection_addr: self.token_metadata.collection.clone(),
-            collection_creator_addr: self.token_metadata.creator_address.clone(),
+            collection_addr: self.token_metadata.get_collection_addr().clone(),
+            collection_creator_addr: standardize_address(
+                self.token_metadata.creator_address.as_str(),
+            ),
             collection_name: self.token_metadata.collection_name.clone(),
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
-            buyer_addr: self.purchaser.clone(),
-            seller_addr: self.seller.clone(),
-            price: self.price as i64,
-            commission: self.commission as i64,
-            royalties: self.royalties as i64,
+            buyer_addr: standardize_address(self.purchaser.as_str()),
+            seller_addr: standardize_address(self.seller.as_str()),
+            price: self.price.parse().unwrap(),
+            commission: self.commission.parse().unwrap(),
+            royalties: self.royalties.parse().unwrap(),
             payment_token: APT_COIN.to_string(),
             payment_token_type: PaymentTokenType::Coin as i32,
             order_placed_timestamp: 0,
@@ -149,17 +154,19 @@ impl BidCancelledEventOnChain {
         event_idx: i64,
     ) -> NftBid {
         NftBid {
-            bid_obj_addr: self.token_offer.clone(),
+            bid_obj_addr: standardize_address(self.token_offer.as_str()),
             nft_id: self.token_metadata.get_id(),
             nft_name: self.token_metadata.token_name.clone(),
-            collection_addr: self.token_metadata.collection.clone(),
-            collection_creator_addr: self.token_metadata.creator_address.clone(),
+            collection_addr: self.token_metadata.get_collection_addr().clone(),
+            collection_creator_addr: standardize_address(
+                self.token_metadata.creator_address.as_str(),
+            ),
             collection_name: self.token_metadata.collection_name.clone(),
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
-            buyer_addr: self.purchaser.clone(),
+            buyer_addr: standardize_address(self.purchaser.as_str()),
             seller_addr: "".to_string(),
-            price: self.price as i64,
+            price: self.price.parse().unwrap(),
             commission: 0,
             royalties: 0,
             payment_token: APT_COIN.to_string(),

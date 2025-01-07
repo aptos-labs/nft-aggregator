@@ -1,3 +1,4 @@
+use aptos_indexer_processor_sdk::utils::convert::standardize_address;
 use diesel::{AsChangeset, Insertable};
 use field_count::FieldCount;
 use serde::{Deserialize, Serialize};
@@ -16,7 +17,7 @@ use super::shared::{
 /// Database representation of a collection bid
 pub struct CollectionBid {
     pub bid_obj_addr: String,
-    pub collection_addr: Option<String>,
+    pub collection_addr: String,
     pub collection_creator_addr: String,
     pub collection_name: String,
     pub nft_standard: i32,
@@ -59,8 +60,8 @@ pub struct FilledCollectionBid {
 pub struct CollectionBidPlacedEventOnChain {
     pub collection_offer: String,
     pub purchaser: String,
-    pub price: u64,
-    pub token_amount: u64,
+    pub price: String,
+    pub token_amount: String,
     pub collection_metadata: CollectionMetadataOnChain,
 }
 
@@ -69,9 +70,9 @@ pub struct CollectionBidFilledEventOnChain {
     pub collection_offer: String,
     pub purchaser: String,
     pub seller: String,
-    pub price: u64,
-    pub royalties: u64,
-    pub commission: u64,
+    pub price: String,
+    pub royalties: String,
+    pub commission: String,
     pub token_metadata: TokenMetadataOnChain,
 }
 
@@ -79,8 +80,8 @@ pub struct CollectionBidFilledEventOnChain {
 pub struct CollectionBidCancelledEventOnChain {
     pub collection_offer: String,
     pub purchaser: String,
-    pub price: u64,
-    pub remaining_token_amount: u64,
+    pub price: String,
+    pub remaining_token_amount: String,
     pub collection_metadata: CollectionMetadataOnChain,
 }
 
@@ -92,15 +93,17 @@ impl CollectionBidPlacedEventOnChain {
         event_idx: i64,
     ) -> CollectionBid {
         CollectionBid {
-            bid_obj_addr: self.collection_offer.clone(),
-            collection_addr: self.collection_metadata.collection.clone(),
-            collection_creator_addr: self.collection_metadata.creator_address.clone(),
+            bid_obj_addr: standardize_address(self.collection_offer.as_str()),
+            collection_addr: self.collection_metadata.get_collection_addr().clone(),
+            collection_creator_addr: standardize_address(
+                self.collection_metadata.creator_address.as_str(),
+            ),
             collection_name: self.collection_metadata.collection_name.clone(),
             nft_standard: self.collection_metadata.get_nft_standard(),
             marketplace_addr,
-            total_nft_amount: self.token_amount as i64,
-            buyer_addr: self.purchaser.clone(),
-            price: self.price as i64,
+            total_nft_amount: self.token_amount.parse().unwrap(),
+            buyer_addr: standardize_address(self.purchaser.as_str()),
+            price: self.price.parse().unwrap(),
             payment_token: APT_COIN.to_string(),
             payment_token_type: PaymentTokenType::Coin as i32,
             order_placed_timestamp: get_unix_timestamp_in_secs(),
@@ -128,15 +131,17 @@ impl CollectionBidFilledEventOnChain {
         let time_now = get_unix_timestamp_in_secs();
         (
             CollectionBid {
-                bid_obj_addr: self.collection_offer.clone(),
-                collection_addr: self.token_metadata.collection.clone(),
-                collection_creator_addr: self.token_metadata.creator_address.clone(),
+                bid_obj_addr: standardize_address(self.collection_offer.as_str()),
+                collection_addr: self.token_metadata.get_collection_addr().clone(),
+                collection_creator_addr: standardize_address(
+                    self.token_metadata.creator_address.as_str(),
+                ),
                 collection_name: self.token_metadata.collection_name.clone(),
                 nft_standard: self.token_metadata.get_nft_standard(),
                 marketplace_addr,
                 total_nft_amount: 0,
-                buyer_addr: self.purchaser.clone(),
-                price: self.price as i64,
+                buyer_addr: standardize_address(self.purchaser.as_str()),
+                price: self.price.parse().unwrap(),
                 payment_token: APT_COIN.to_string(),
                 payment_token_type: PaymentTokenType::Coin as i32,
                 order_placed_timestamp: 0,
@@ -154,13 +159,13 @@ impl CollectionBidFilledEventOnChain {
                 order_expiration_timestamp: 0,
             },
             FilledCollectionBid {
-                bid_obj_addr: self.collection_offer.clone(),
+                bid_obj_addr: standardize_address(self.collection_offer.as_str()),
                 nft_id: self.token_metadata.get_id(),
                 nft_name: self.token_metadata.token_name.clone(),
-                seller_addr: self.seller.clone(),
-                price: self.price as i64,
-                royalties: self.royalties as i64,
-                commission: self.commission as i64,
+                seller_addr: standardize_address(self.seller.as_str()),
+                price: self.price.parse().unwrap(),
+                royalties: self.royalties.parse().unwrap(),
+                commission: self.commission.parse().unwrap(),
                 order_filled_timestamp: time_now,
                 order_filled_tx_version: tx_version,
                 order_filled_event_idx: event_idx,
@@ -177,15 +182,15 @@ impl CollectionBidCancelledEventOnChain {
         event_idx: i64,
     ) -> CollectionBid {
         CollectionBid {
-            bid_obj_addr: self.collection_offer.clone(),
-            collection_addr: self.collection_metadata.collection.clone(),
-            collection_creator_addr: self.collection_metadata.creator_address.clone(),
+            bid_obj_addr: standardize_address(self.collection_offer.as_str()),
+            collection_addr: self.collection_metadata.get_collection_addr().clone(),
+            collection_creator_addr: standardize_address(self.collection_metadata.creator_address.as_str()),
             collection_name: self.collection_metadata.collection_name.clone(),
             nft_standard: self.collection_metadata.get_nft_standard(),
             marketplace_addr,
             total_nft_amount: 0,
-            buyer_addr: self.purchaser.clone(),
-            price: self.price as i64,
+            buyer_addr: standardize_address(self.purchaser.as_str()),
+            price: self.price.parse().unwrap(),
             payment_token: APT_COIN.to_string(),
             payment_token_type: PaymentTokenType::Coin as i32,
             order_placed_timestamp: 0,

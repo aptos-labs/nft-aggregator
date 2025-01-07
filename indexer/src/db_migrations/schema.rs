@@ -5,7 +5,7 @@ diesel::table! {
         #[max_length = 300]
         bid_obj_addr -> Varchar,
         #[max_length = 300]
-        collection_addr -> Nullable<Varchar>,
+        collection_addr -> Varchar,
         #[max_length = 300]
         collection_creator_addr -> Varchar,
         #[max_length = 300]
@@ -84,7 +84,7 @@ diesel::table! {
         #[max_length = 300]
         nft_name -> Varchar,
         #[max_length = 300]
-        collection_addr -> Nullable<Varchar>,
+        collection_addr -> Varchar,
         #[max_length = 300]
         collection_creator_addr -> Varchar,
         #[max_length = 300]

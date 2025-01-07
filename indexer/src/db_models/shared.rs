@@ -1,3 +1,4 @@
+use aptos_indexer_processor_sdk::utils::convert::standardize_address;
 use serde::{Deserialize, Serialize};
 
 pub const APT_COIN: &str = "0x1::aptos_coin::AptosCoin";
@@ -28,12 +29,12 @@ pub enum AskOrderType {
 pub struct CollectionMetadataOnChain {
     pub creator_address: String,
     pub collection_name: String,
-    pub collection: Option<String>,
+    pub collection: MoveOptionObject,
 }
 
 impl CollectionMetadataOnChain {
     pub fn is_v1(&self) -> bool {
-        self.collection.is_none()
+        self.collection.vec.len() == 0
     }
 
     pub fn get_nft_standard(&self) -> i32 {
@@ -43,21 +44,44 @@ impl CollectionMetadataOnChain {
             NFTStandard::V2 as i32
         }
     }
+
+    pub fn get_collection_addr(&self) -> String {
+        if self.is_v1() {
+            "".to_string()
+        } else {
+            standardize_address(self.collection.vec[0].clone().inner.as_str())
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MoveObject {
+    pub inner: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MoveOptionObject {
+    pub vec: Vec<MoveObject>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MoveOptionU64 {
+    pub vec: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TokenMetadataOnChain {
     pub creator_address: String,
     pub collection_name: String,
-    pub collection: Option<String>,
+    pub collection: MoveOptionObject,
     pub token_name: String,
-    pub token: Option<String>,
-    pub property_version: Option<u64>,
+    pub token: MoveOptionObject,
+    pub property_version: MoveOptionU64,
 }
 
 impl TokenMetadataOnChain {
     pub fn is_v1(&self) -> bool {
-        self.token.is_none()
+        self.collection.vec.len() == 0
     }
 
     pub fn get_nft_standard(&self) -> i32 {
@@ -70,9 +94,17 @@ impl TokenMetadataOnChain {
 
     pub fn get_id(&self) -> String {
         if self.is_v1() {
-            self.property_version.clone().unwrap().to_string()
+            self.property_version.vec[0].clone()
         } else {
-            self.token.clone().unwrap()
+            standardize_address(self.token.vec[0].clone().inner.as_str())
+        }
+    }
+
+    pub fn get_collection_addr(&self) -> String {
+        if self.is_v1() {
+            "".to_string()
+        } else {
+            standardize_address(self.collection.vec[0].clone().inner.as_str())
         }
     }
 
@@ -83,10 +115,10 @@ impl TokenMetadataOnChain {
             format!(
                 "{}_{}",
                 self.token_name.clone(),
-                self.property_version.clone().unwrap().to_string()
+                self.property_version.vec[0].clone()
             )
         } else {
-            self.token.clone().unwrap()
+            standardize_address(self.token.vec[0].clone().inner.as_str())
         }
     }
 }

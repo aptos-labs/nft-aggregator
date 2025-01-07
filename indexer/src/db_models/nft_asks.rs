@@ -1,3 +1,4 @@
+use aptos_indexer_processor_sdk::utils::convert::standardize_address;
 use diesel::{AsChangeset, Insertable};
 use field_count::FieldCount;
 use serde::{Deserialize, Serialize};
@@ -15,7 +16,7 @@ pub struct NftAsk {
     pub ask_obj_addr: String,
     pub nft_id: String,
     pub nft_name: String,
-    pub collection_addr: Option<String>,
+    pub collection_addr: String,
     pub collection_creator_addr: String,
     pub collection_name: String,
     pub nft_standard: i32,
@@ -54,7 +55,7 @@ pub struct AskPlacedEventOnChain {
     pub order_type: String,
     pub listing: String,
     pub seller: String,
-    pub price: u64,
+    pub price: String,
     pub token_metadata: TokenMetadataOnChain,
 }
 
@@ -65,9 +66,9 @@ pub struct AskFilledEventOnChain {
     pub listing: String,
     pub seller: String,
     pub purchaser: String,
-    pub price: u64,
-    pub commission: u64,
-    pub royalties: u64,
+    pub price: String,
+    pub commission: String,
+    pub royalties: String,
     pub token_metadata: TokenMetadataOnChain,
 }
 
@@ -77,44 +78,44 @@ pub struct AskCancelledEventOnChain {
     pub order_type: String,
     pub listing: String,
     pub seller: String,
-    pub price: u64,
+    pub price: String,
     pub token_metadata: TokenMetadataOnChain,
 }
 
 // Tradeport v1 InsertListingEvent
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TradeportV1AskPlacedEventOnChain {
-    pub timestamp: u64,
+    pub timestamp: String,
     pub token_id: NftV1TokenId,
-    pub price: u64,
+    pub price: String,
     pub owner: String,
 }
 
 // Tradeport v1 UpdateListingEvent
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TradeportV1AskUpdatedEventOnChain {
-    pub timestamp: u64,
+    pub timestamp: String,
     pub token_id: NftV1TokenId,
-    pub price: u64,
-    pub old_price: u64,
+    pub price: String,
+    pub old_price: String,
     pub owner: String,
 }
 
 // Tradeport v1 DeleteListingEvent
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TradeportV1AskCancelledEventOnChain {
-    pub timestamp: u64,
+    pub timestamp: String,
     pub token_id: NftV1TokenId,
-    pub price: u64,
+    pub price: String,
     pub owner: String,
 }
 
 // Tradeport v1 BuyEvent
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TradeportV1AskFilledEventOnChain {
-    pub timestamp: u64,
+    pub timestamp: String,
     pub token_id: NftV1TokenId,
-    pub price: u64,
+    pub price: String,
     pub owner: String,
     pub buyer: String,
 }
@@ -127,17 +128,19 @@ impl AskPlacedEventOnChain {
         event_idx: i64,
     ) -> NftAsk {
         NftAsk {
-            ask_obj_addr: self.listing.clone(),
+            ask_obj_addr: standardize_address(self.listing.as_str()),
             nft_id: self.token_metadata.get_id(),
             nft_name: self.token_metadata.token_name.clone(),
-            collection_addr: self.token_metadata.collection.clone(),
-            collection_creator_addr: self.token_metadata.creator_address.clone(),
+            collection_addr: self.token_metadata.get_collection_addr().clone(),
+            collection_creator_addr: standardize_address(
+                self.token_metadata.creator_address.as_str(),
+            ),
             collection_name: self.token_metadata.collection_name.clone(),
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
             buyer_addr: "".to_string(),
-            seller_addr: self.seller.clone(),
-            price: self.price as i64,
+            seller_addr: standardize_address(self.seller.as_str()),
+            price: self.price.parse().unwrap(),
             commission: 0,
             royalties: 0,
             payment_token: APT_COIN.to_string(),
@@ -165,19 +168,21 @@ impl AskFilledEventOnChain {
         event_idx: i64,
     ) -> NftAsk {
         NftAsk {
-            ask_obj_addr: self.listing.clone(),
+            ask_obj_addr: standardize_address(self.listing.as_str()),
             nft_id: self.token_metadata.get_id(),
             nft_name: self.token_metadata.token_name.clone(),
-            collection_addr: self.token_metadata.collection.clone(),
-            collection_creator_addr: self.token_metadata.creator_address.clone(),
+            collection_addr: self.token_metadata.get_collection_addr().clone(),
+            collection_creator_addr: standardize_address(
+                self.token_metadata.creator_address.as_str(),
+            ),
             collection_name: self.token_metadata.collection_name.clone(),
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
-            buyer_addr: self.purchaser.clone(),
-            seller_addr: self.seller.clone(),
-            price: self.price as i64,
-            commission: self.commission as i64,
-            royalties: self.royalties as i64,
+            buyer_addr: standardize_address(self.purchaser.as_str()),
+            seller_addr: standardize_address(self.seller.as_str()),
+            price: self.price.parse().unwrap(),
+            commission: self.commission.parse().unwrap(),
+            royalties: self.royalties.parse().unwrap(),
             payment_token: APT_COIN.to_string(),
             payment_token_type: PaymentTokenType::Coin as i32,
             order_placed_timestamp: 0,
@@ -203,17 +208,19 @@ impl AskCancelledEventOnChain {
         event_idx: i64,
     ) -> NftAsk {
         NftAsk {
-            ask_obj_addr: self.listing.clone(),
+            ask_obj_addr: standardize_address(self.listing.as_str()),
             nft_id: self.token_metadata.get_id(),
             nft_name: self.token_metadata.token_name.clone(),
-            collection_addr: self.token_metadata.collection.clone(),
-            collection_creator_addr: self.token_metadata.creator_address.clone(),
+            collection_addr: self.token_metadata.get_collection_addr().clone(),
+            collection_creator_addr: standardize_address(
+                self.token_metadata.creator_address.as_str(),
+            ),
             collection_name: self.token_metadata.collection_name.clone(),
             nft_standard: self.token_metadata.get_nft_standard(),
             marketplace_addr,
             buyer_addr: "".to_string(),
-            seller_addr: self.seller.clone(),
-            price: self.price as i64,
+            seller_addr: standardize_address(self.seller.as_str()),
+            price: self.price.parse().unwrap(),
             commission: 0,
             royalties: 0,
             payment_token: APT_COIN.to_string(),
