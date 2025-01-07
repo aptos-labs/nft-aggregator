@@ -33,7 +33,8 @@ use serde::{Deserialize, Serialize};
 )]
 pub enum ProcessorConfig {
     ContractUpgradeIndexer,
-    MarketplaceIndexer,
+    WapalMarketplaceIndexer,
+    RaribleMarketplaceIndexer,
 }
 
 impl ProcessorConfig {

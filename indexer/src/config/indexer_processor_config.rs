@@ -29,7 +29,11 @@ impl RunnableConfig for IndexerProcessorConfig {
                 let processor = ContractUpgradeProcessor::new(self.clone()).await?;
                 processor.run_processor().await
             }
-            ProcessorConfig::MarketplaceIndexer => {
+            ProcessorConfig::WapalMarketplaceIndexer => {
+                let processor = MarketplaceProcessor::new(self.clone()).await?;
+                processor.run_processor().await
+            }
+            ProcessorConfig::RaribleMarketplaceIndexer => {
                 let processor = MarketplaceProcessor::new(self.clone()).await?;
                 processor.run_processor().await
             }
