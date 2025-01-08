@@ -143,6 +143,12 @@ impl ContractEvent {
         // use standardize_address to pad the address in event type before processing
         let parts = event.type_str.split("::").collect::<Vec<_>>();
         let event_addr = standardize_address(parts[0]);
+        if parts.len() < 3 {
+            panic!(
+                "Invalid event type: {}, event data: {}",
+                event.type_str, event.data
+            );
+        }
         let t = event_addr.clone() + "::" + parts[1] + "::" + parts[2];
         let should_include = contract_addresses.contains(event_addr.as_str());
 
@@ -245,10 +251,11 @@ impl ContractEvent {
                         event_idx,
                     ),
                 ))
-            } else if t.starts_with(
-                format!("{}::events::CollectionOfferCancelled", event_addr).as_str(),
-            ) || t
-                .starts_with(format!("{}::events::CollectionOfferCanceled", event_addr).as_str())
+            } else if t
+                .starts_with(format!("{}::events::CollectionOfferCancelled", event_addr).as_str())
+                || t.starts_with(
+                    format!("{}::events::CollectionOfferCanceled", event_addr).as_str(),
+                )
             {
                 println!("CollectionBidCancelledEvent {}", event.data.as_str());
                 let parsed_event: CollectionBidCancelledEventOnChain =
