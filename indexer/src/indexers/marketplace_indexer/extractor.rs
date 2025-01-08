@@ -143,16 +143,9 @@ impl ContractEvent {
         // use standardize_address to pad the address in event type before processing
         let parts = event.type_str.split("::").collect::<Vec<_>>();
         let event_addr = standardize_address(parts[0]);
-        if parts.len() < 3 {
-            panic!(
-                "Invalid event type: {}, event data: {}",
-                event.type_str, event.data
-            );
-        }
-        let t = event_addr.clone() + "::" + parts[1] + "::" + parts[2];
-        let should_include = contract_addresses.contains(event_addr.as_str());
 
-        if should_include {
+        if contract_addresses.contains(event_addr.as_str()) {
+            let t = event_addr.clone() + "::" + parts[1] + "::" + parts[2];
             if t.starts_with(format!("{}::events::TokenOfferPlaced", event_addr).as_str()) {
                 println!("BidPlacedEvent {}", event.data.as_str());
                 let parsed_event: BidPlacedEventOnChain = serde_json::from_str(event.data.as_str())
