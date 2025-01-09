@@ -40,7 +40,8 @@ impl MarketplaceProcessor {
         let starting_version = get_starting_version(&self.config, self.db_pool.clone()).await?;
 
         tracing::info!(
-            "Starting marketplace processor with starting version: {:?}",
+            "Starting {} with starting version: {:?}",
+            self.config.processor_config.name(),
             starting_version
         );
 
