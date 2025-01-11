@@ -70,7 +70,7 @@ pub async fn process_ask_filled_events(
             let items = chunk.to_vec();
             tokio::spawn(async move {
                 let conn = &mut get_db_connection(&pool).await.expect(
-                    "Failed to get connection from pool while processing create message events",
+                    "Failed to get connection from pool while processing ask filled events",
                 );
                 execute_sql(conn, items).await
             })

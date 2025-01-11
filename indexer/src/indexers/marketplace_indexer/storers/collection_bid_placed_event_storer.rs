@@ -30,7 +30,8 @@ async fn execute_sql(
                 .set((
                     collection_bids::price.eq(excluded(collection_bids::price)),
                     collection_bids::buyer_addr.eq(excluded(collection_bids::buyer_addr)),
-                    collection_bids::total_nft_amount.eq(excluded(collection_bids::total_nft_amount)),
+                    collection_bids::total_nft_amount
+                        .eq(excluded(collection_bids::total_nft_amount)),
                     collection_bids::order_placed_timestamp
                         .eq(excluded(collection_bids::order_placed_timestamp)),
                     collection_bids::order_placed_tx_version
@@ -63,16 +64,34 @@ pub async fn process_collection_bid_placed_events(
     per_table_chunk_sizes: AHashMap<String, usize>,
     events: Vec<CollectionBid>,
 ) -> Result<(), ProcessorError> {
+    let mut unique_events: AHashMap<String, CollectionBid> = AHashMap::new();
+    for event in events {
+        if let Some(existing_event) = unique_events.get_mut(&event.bid_obj_addr) {
+            if event.order_placed_tx_version > existing_event.order_placed_tx_version {
+                *existing_event = event;
+            } else if event.order_placed_tx_version == existing_event.order_placed_tx_version
+                && event.order_placed_event_idx > existing_event.order_placed_event_idx
+            {
+                *existing_event = event;
+            }
+        } else {
+            unique_events.insert(event.bid_obj_addr.clone(), event);
+        }
+    }
+
     let chunk_size =
         get_config_table_chunk_size::<CollectionBid>("nft_bids", &per_table_chunk_sizes);
-    let tasks = events
+    let tasks = unique_events
+        .into_iter()
+        .map(|(_, v)| v)
+        .collect::<Vec<_>>()
         .chunks(chunk_size)
         .map(|chunk| {
             let pool = pool.clone();
             let items = chunk.to_vec();
             tokio::spawn(async move {
                 let conn = &mut get_db_connection(&pool).await.expect(
-                    "Failed to get connection from pool while processing create message events",
+                    "Failed to get connection from pool while processing collection bid placed events",
                 );
                 execute_sql(conn, items).await
             })
