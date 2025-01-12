@@ -63,10 +63,9 @@ pub async fn process_ask_placed_events(
     let mut unique_events: AHashMap<String, NftAsk> = AHashMap::new();
     for event in events {
         if let Some(existing_event) = unique_events.get_mut(&event.ask_obj_addr) {
-            if event.order_placed_tx_version > existing_event.order_placed_tx_version {
-                *existing_event = event;
-            } else if event.order_placed_tx_version == existing_event.order_placed_tx_version
-                && event.order_placed_event_idx > existing_event.order_placed_event_idx
+            if event.order_placed_tx_version > existing_event.order_placed_tx_version
+                || event.order_placed_tx_version == existing_event.order_placed_tx_version
+                    && event.order_placed_event_idx > existing_event.order_placed_event_idx
             {
                 *existing_event = event;
             }
