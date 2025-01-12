@@ -66,7 +66,7 @@ pub async fn process_ask_filled_events(
     for event in events.clone() {
         if let Some(existing_event) = unique_events.get_mut(&event.ask_obj_addr) {
             panic!(
-                "duplicate ask filled event at different tx, {:?}, {:?}",
+                "unexpected duplicate ask filled event at different tx, {:?}, {:?}",
                 existing_event, event
             )
         } else {
