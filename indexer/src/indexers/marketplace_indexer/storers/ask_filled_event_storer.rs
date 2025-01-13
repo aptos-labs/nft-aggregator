@@ -50,8 +50,14 @@ async fn execute_sql(
                                     .lt(excluded(nft_asks::order_filled_event_idx)),
                             )),
                 );
-            sql.execute(conn).await?;
-            Ok(())
+            match sql.execute(conn).await {
+                Err(e) => {
+                    println!("Error executing sql: {:?}, items to insert {:?}", e, items_to_insert);
+                    Err(e)
+                }
+                Ok(_) => Ok(()),
+            }
+            // Ok(())
         })
     })
     .await
