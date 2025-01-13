@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     schema::{collection_bids, filled_collection_bids},
-    utils::utils::get_unix_timestamp_in_secs,
+    utils::time_utils::get_unix_timestamp_in_secs,
 };
 
 use super::shared::{
@@ -184,7 +184,9 @@ impl CollectionBidCancelledEventOnChain {
         CollectionBid {
             bid_obj_addr: standardize_address(self.collection_offer.as_str()),
             collection_addr: self.collection_metadata.get_collection_addr().clone(),
-            collection_creator_addr: standardize_address(self.collection_metadata.creator_address.as_str()),
+            collection_creator_addr: standardize_address(
+                self.collection_metadata.creator_address.as_str(),
+            ),
             collection_name: self.collection_metadata.collection_name.clone(),
             nft_standard: self.collection_metadata.get_nft_standard(),
             marketplace_addr,

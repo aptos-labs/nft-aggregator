@@ -3,7 +3,7 @@ use diesel::{AsChangeset, Insertable};
 use field_count::FieldCount;
 use serde::{Deserialize, Serialize};
 
-use crate::{schema::nft_bids, utils::utils::get_unix_timestamp_in_secs};
+use crate::{schema::nft_bids, utils::time_utils::get_unix_timestamp_in_secs};
 
 use super::shared::{OrderStatus, PaymentTokenType, TokenMetadataOnChain, APT_COIN};
 

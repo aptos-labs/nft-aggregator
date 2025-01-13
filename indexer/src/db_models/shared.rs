@@ -34,7 +34,7 @@ pub struct CollectionMetadataOnChain {
 
 impl CollectionMetadataOnChain {
     pub fn is_v1(&self) -> bool {
-        self.collection.vec.len() == 0
+        self.collection.vec.is_empty()
     }
 
     pub fn get_nft_standard(&self) -> i32 {
@@ -81,7 +81,7 @@ pub struct TokenMetadataOnChain {
 
 impl TokenMetadataOnChain {
     pub fn is_v1(&self) -> bool {
-        self.collection.vec.len() == 0
+        self.collection.vec.is_empty()
     }
 
     pub fn get_nft_standard(&self) -> i32 {

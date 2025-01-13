@@ -3,7 +3,7 @@ use diesel::{AsChangeset, Insertable};
 use field_count::FieldCount;
 use serde::{Deserialize, Serialize};
 
-use crate::{schema::nft_asks, utils::utils::get_unix_timestamp_in_secs};
+use crate::{schema::nft_asks, utils::time_utils::get_unix_timestamp_in_secs};
 
 use super::shared::{
     AskOrderType, NftV1TokenId, OrderStatus, PaymentTokenType, TokenMetadataOnChain, APT_COIN,

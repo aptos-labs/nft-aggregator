@@ -19,13 +19,23 @@ use crate::{
 
 async fn execute_sql(
     conn: &mut AsyncPgConnection,
-    unique_collection_bids: Vec<CollectionBid>,
-    all_filled_collection_bids: Vec<FilledCollectionBid>,
+    data: Vec<(CollectionBid, Vec<FilledCollectionBid>)>,
 ) -> QueryResult<()> {
+    let (collection_bids, filled_collection_bids): (Vec<CollectionBid>, Vec<FilledCollectionBid>) =
+        data.into_iter().fold(
+            (vec![], vec![]),
+            |(mut collection_bids, mut filled_collection_bids),
+             (collection_bid, filled_collection_bid)| {
+                collection_bids.push(collection_bid);
+                filled_collection_bids.extend(filled_collection_bid);
+                (collection_bids, filled_collection_bids)
+            },
+        );
+
     conn.transaction(|conn| {
         Box::pin(async move {
             let sql = insert_into(collection_bids::table)
-                .values(unique_collection_bids.clone())
+                .values(collection_bids.clone())
                 .on_conflict(collection_bids::bid_obj_addr)
                 .do_update()
                 .set((
@@ -51,7 +61,7 @@ async fn execute_sql(
             sql.execute(conn).await?;
 
             let sql = insert_into(filled_collection_bids::table)
-                .values(all_filled_collection_bids.clone())
+                .values(filled_collection_bids.clone())
                 .on_conflict((
                     filled_collection_bids::bid_obj_addr,
                     filled_collection_bids::nft_id,
@@ -95,9 +105,47 @@ pub async fn process_collection_bid_filled_events(
     per_table_chunk_sizes: AHashMap<String, usize>,
     events: Vec<(CollectionBid, FilledCollectionBid)>,
 ) -> Result<(), ProcessorError> {
+    let mut collection_bids_map: AHashMap<String, (CollectionBid, Vec<FilledCollectionBid>)> =
+        AHashMap::new();
+
+    for (curr_collection_bid, curr_filled_collection_bid) in events.clone() {
+        // if not exist, insert, otherwise use the one with greater tx version and event index
+        let existing_collection_bid = collection_bids_map
+            .get(&curr_collection_bid.bid_obj_addr)
+            .cloned();
+        match existing_collection_bid {
+            Some(mut existing_collection_bid) => {
+                existing_collection_bid.1.push(curr_filled_collection_bid);
+                if curr_collection_bid.order_placed_tx_version
+                    > existing_collection_bid.0.order_placed_tx_version
+                    || (curr_collection_bid.order_placed_tx_version
+                        == existing_collection_bid.0.order_placed_tx_version
+                        && curr_collection_bid.order_placed_event_idx
+                            > existing_collection_bid.0.order_placed_event_idx)
+                {
+                    collection_bids_map.insert(
+                        curr_collection_bid.bid_obj_addr.clone(),
+                        (curr_collection_bid.clone(), existing_collection_bid.1),
+                    );
+                }
+            }
+            None => {
+                collection_bids_map.insert(
+                    curr_collection_bid.bid_obj_addr.clone(),
+                    (
+                        curr_collection_bid.clone(),
+                        vec![curr_filled_collection_bid],
+                    ),
+                );
+            }
+        }
+    }
+
+    let collection_bids = collection_bids_map.values().cloned().collect::<Vec<_>>();
+
     let chunk_size =
         get_config_table_chunk_size::<CollectionBid>("collection_bids", &per_table_chunk_sizes);
-    let tasks = events
+    let tasks = collection_bids
         .chunks(chunk_size)
         .map(|chunk| {
             let pool = pool.clone();
@@ -106,45 +154,9 @@ pub async fn process_collection_bid_filled_events(
                 let conn = &mut get_db_connection(&pool).await.expect(
                     "Failed to get connection from pool while processing collection bid filled events",
                 );
-
-                let mut all_filled_collection_bids = vec![];
-                let mut unique_collection_bids: AHashMap<String, CollectionBid> = AHashMap::new();
-
-                for (curr_collection_bid, curr_filled_collection_bid) in items.clone() {
-                    // if not exist, insert, otherwise use the one with greater tx version and event index
-                    let existing_collection_bid = unique_collection_bids
-                        .get(&curr_collection_bid.bid_obj_addr)
-                        .cloned();
-                    match existing_collection_bid {
-                        Some(existing_collection_bid) => {
-                            if curr_collection_bid.order_placed_tx_version
-                                > existing_collection_bid.order_placed_tx_version
-                                || (curr_collection_bid.order_placed_tx_version
-                                    == existing_collection_bid.order_placed_tx_version
-                                    && curr_collection_bid.order_placed_event_idx
-                                        > existing_collection_bid.order_placed_event_idx)
-                            {
-                                unique_collection_bids.insert(
-                                    curr_collection_bid.bid_obj_addr.clone(),
-                                    curr_collection_bid.clone(),
-                                );
-                            }
-                        }
-                        None => {
-                            unique_collection_bids.insert(
-                                curr_collection_bid.bid_obj_addr.clone(),
-                                curr_collection_bid.clone(),
-                            );
-                        }
-                    }
-
-                    all_filled_collection_bids.push(curr_filled_collection_bid);
-                }
-
                 execute_sql(
                     conn,
-                    unique_collection_bids.values().cloned().collect(),
-                    all_filled_collection_bids,
+                    items
                 )
                 .await
             })
@@ -156,7 +168,7 @@ pub async fn process_collection_bid_filled_events(
         Err(e) => {
             println!(
                 "error writing collection bid filled events to db: {:?}",
-                events
+                collection_bids
             );
             Err(e)
         }
