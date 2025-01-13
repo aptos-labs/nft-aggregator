@@ -61,18 +61,6 @@ pub async fn process_ask_cancelled_events(
     per_table_chunk_sizes: AHashMap<String, usize>,
     events: Vec<NftAsk>,
 ) -> Result<(), ProcessorError> {
-    let mut unique_events: AHashMap<String, NftAsk> = AHashMap::new();
-    for event in events.clone() {
-        if let Some(existing_event) = unique_events.get_mut(&event.ask_obj_addr) {
-            panic!(
-                "unexpected duplicate ask cancelled event at different tx, {:?}, {:?}",
-                existing_event, event
-            )
-        } else {
-            unique_events.insert(event.ask_obj_addr.clone(), event);
-        }
-    }
-
     let chunk_size = get_config_table_chunk_size::<NftAsk>("nft_asks", &per_table_chunk_sizes);
     let tasks = events
         .chunks(chunk_size)
@@ -88,5 +76,11 @@ pub async fn process_ask_cancelled_events(
         })
         .collect::<Vec<_>>();
 
-    handle_db_execution(tasks).await
+    match handle_db_execution(tasks).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            println!("error writing ask cancelled events to db: {:?}", events);
+            Err(e)
+        }
+    }
 }

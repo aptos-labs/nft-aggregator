@@ -64,9 +64,9 @@ pub async fn process_collection_bid_placed_events(
     per_table_chunk_sizes: AHashMap<String, usize>,
     events: Vec<CollectionBid>,
 ) -> Result<(), ProcessorError> {
-    let mut unique_events: AHashMap<String, CollectionBid> = AHashMap::new();
+    let mut unique_events_map: AHashMap<String, CollectionBid> = AHashMap::new();
     for event in events {
-        if let Some(existing_event) = unique_events.get_mut(&event.bid_obj_addr) {
+        if let Some(existing_event) = unique_events_map.get_mut(&event.bid_obj_addr) {
             if event.order_placed_tx_version > existing_event.order_placed_tx_version
                 || event.order_placed_tx_version == existing_event.order_placed_tx_version
                     && event.order_placed_event_idx > existing_event.order_placed_event_idx
@@ -74,16 +74,17 @@ pub async fn process_collection_bid_placed_events(
                 *existing_event = event;
             }
         } else {
-            unique_events.insert(event.bid_obj_addr.clone(), event);
+            unique_events_map.insert(event.bid_obj_addr.clone(), event);
         }
     }
+    let unique_events = unique_events_map
+        .into_iter()
+        .map(|(_, v)| v)
+        .collect::<Vec<_>>();
 
     let chunk_size =
         get_config_table_chunk_size::<CollectionBid>("nft_bids", &per_table_chunk_sizes);
     let tasks = unique_events
-        .into_iter()
-        .map(|(_, v)| v)
-        .collect::<Vec<_>>()
         .chunks(chunk_size)
         .map(|chunk| {
             let pool = pool.clone();
@@ -97,5 +98,14 @@ pub async fn process_collection_bid_placed_events(
         })
         .collect::<Vec<_>>();
 
-    handle_db_execution(tasks).await
+    match handle_db_execution(tasks).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            println!(
+                "error writing collection bid placed events to db: {:?}",
+                unique_events
+            );
+            Err(e)
+        }
+    }
 }

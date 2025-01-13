@@ -151,5 +151,14 @@ pub async fn process_collection_bid_filled_events(
         })
         .collect::<Vec<_>>();
 
-    handle_db_execution(tasks).await
+    match handle_db_execution(tasks).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            println!(
+                "error writing collection bid filled events to db: {:?}",
+                events
+            );
+            Err(e)
+        }
+    }
 }

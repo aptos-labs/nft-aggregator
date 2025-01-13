@@ -61,18 +61,6 @@ pub async fn process_bid_cancelled_events(
     per_table_chunk_sizes: AHashMap<String, usize>,
     events: Vec<NftBid>,
 ) -> Result<(), ProcessorError> {
-    let mut unique_events: AHashMap<String, NftBid> = AHashMap::new();
-    for event in events.clone() {
-        if let Some(existing_event) = unique_events.get_mut(&event.bid_obj_addr) {
-            panic!(
-                "unexpected duplicate bid cancelled event at different tx, {:?}, {:?}",
-                existing_event, event
-            )
-        } else {
-            unique_events.insert(event.bid_obj_addr.clone(), event);
-        }
-    }
-
     let chunk_size = get_config_table_chunk_size::<NftBid>("nft_bids", &per_table_chunk_sizes);
     let tasks = events
         .chunks(chunk_size)
@@ -88,5 +76,11 @@ pub async fn process_bid_cancelled_events(
         })
         .collect::<Vec<_>>();
 
-    handle_db_execution(tasks).await
+    match handle_db_execution(tasks).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            println!("error writing bid cancelled events to db: {:?}", events);
+            Err(e)
+        }
+    }
 }
