@@ -50,14 +50,8 @@ async fn execute_sql(
                                     .lt(excluded(nft_asks::order_filled_event_idx)),
                             )),
                 );
-            match sql.execute(conn).await {
-                Err(e) => {
-                    println!("Error executing sql: {:?}, items to insert {:?}", e, items_to_insert);
-                    Err(e)
-                }
-                Ok(_) => Ok(()),
-            }
-            // Ok(())
+            sql.execute(conn).await?;
+            Ok(())
         })
     })
     .await
@@ -79,6 +73,8 @@ pub async fn process_ask_filled_events(
             unique_events.insert(event.ask_obj_addr.clone(), event);
         }
     }
+
+    println!("writing ask filled events to db: {:?}", events);
 
     let chunk_size = get_config_table_chunk_size::<NftAsk>("nft_asks", &per_table_chunk_sizes);
     let tasks = events
