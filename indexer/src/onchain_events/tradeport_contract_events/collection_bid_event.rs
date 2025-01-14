@@ -6,38 +6,40 @@ use crate::{
     utils::time_utils::get_unix_timestamp_in_secs,
 };
 
-// use super::shared::{
-//     CollectionMetadataOnChain, OrderStatus, PaymentTokenType, TokenMetadataOnChain, APT_COIN,
-// };
+use super::shared::{NftV1CollectionId, NftV1TokenId};
 
-// #[derive(Clone, Debug, Deserialize, Serialize)]
-// pub struct CollectionBidPlacedEventOnChain {
-//     pub collection_offer: String,
-//     pub purchaser: String,
-//     pub price: String,
-//     pub token_amount: String,
-//     pub collection_metadata: CollectionMetadataOnChain,
-// }
+// Tradeport v1 InsertCollectionBidEvent
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CollectionBidPlacedEventOnChain {
+    pub timestamp: String,
+    pub nonce: String,
+    pub bid_buyer: String,
+    pub collection_id: NftV1CollectionId,
+    pub amount: String,
+    pub price: String,
+}
 
-// #[derive(Clone, Debug, Deserialize, Serialize)]
-// pub struct CollectionBidFilledEventOnChain {
-//     pub collection_offer: String,
-//     pub purchaser: String,
-//     pub seller: String,
-//     pub price: String,
-//     pub royalties: String,
-//     pub commission: String,
-//     pub token_metadata: TokenMetadataOnChain,
-// }
+// Tradeport v1 AcceptCollectionBidEvent
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TradeportV1CollectionBidFilledEventOnChain {
+    pub timestamp: String,
+    pub nonce: String,
+    pub bid_buyer: String,
+    pub bid_seller: String,
+    pub token_id: NftV1TokenId,
+    pub price: String,
+}
 
-// #[derive(Clone, Debug, Deserialize, Serialize)]
-// pub struct CollectionBidCancelledEventOnChain {
-//     pub collection_offer: String,
-//     pub purchaser: String,
-//     pub price: String,
-//     pub remaining_token_amount: String,
-//     pub collection_metadata: CollectionMetadataOnChain,
-// }
+// Tradeport v1 DeleteCollectionBidEvent
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CollectionBidCancelledEventOnChain {
+    pub timestamp: String,
+    pub nonce: String,
+    pub bid_buyer: String,
+    pub collection_id: NftV1CollectionId,
+    pub amount: String,
+    pub price: String,
+}
 
 // impl CollectionBidPlacedEventOnChain {
 //     pub fn to_db_collection_bid(

@@ -4,13 +4,12 @@ use serde::{Deserialize, Serialize};
 use crate::{
     db_models::collection_bids::{CollectionBid, FilledCollectionBid},
     utils::{
-        aptos_utils::{
-            CollectionMetadataOnChain, OrderStatus, PaymentTokenType, TokenMetadataOnChain,
-            APT_COIN,
-        },
+        aptos_utils::{OrderStatus, PaymentTokenType, APT_COIN},
         time_utils::get_unix_timestamp_in_secs,
     },
 };
+
+use super::shared::{CollectionMetadataOnChain, TokenMetadataOnChain};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CollectionBidPlacedEventOnChain {

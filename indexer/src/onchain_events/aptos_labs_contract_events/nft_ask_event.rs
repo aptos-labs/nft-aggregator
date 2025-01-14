@@ -4,12 +4,12 @@ use serde::{Deserialize, Serialize};
 use crate::{
     db_models::nft_asks::NftAsk,
     utils::{
-        aptos_utils::{
-            AskOrderType, OrderStatus, PaymentTokenType, TokenMetadataOnChain, APT_COIN,
-        },
+        aptos_utils::{AskOrderType, OrderStatus, PaymentTokenType, APT_COIN},
         time_utils::get_unix_timestamp_in_secs,
     },
 };
+
+use super::shared::TokenMetadataOnChain;
 
 fn convert_on_chain_order_type_to_db_order_type(order_type: &str) -> AskOrderType {
     match order_type {

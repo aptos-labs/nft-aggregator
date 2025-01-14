@@ -4,10 +4,12 @@ use serde::{Deserialize, Serialize};
 use crate::{
     db_models::nft_bids::NftBid,
     utils::{
-        aptos_utils::{OrderStatus, PaymentTokenType, TokenMetadataOnChain, APT_COIN},
+        aptos_utils::{OrderStatus, PaymentTokenType, APT_COIN},
         time_utils::get_unix_timestamp_in_secs,
     },
 };
+
+use super::shared::TokenMetadataOnChain;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BidPlacedEventOnChain {

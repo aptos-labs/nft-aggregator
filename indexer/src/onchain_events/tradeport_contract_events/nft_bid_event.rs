@@ -3,34 +3,38 @@ use serde::{Deserialize, Serialize};
 
 use crate::{db_models::nft_bids::NftBid, utils::time_utils::get_unix_timestamp_in_secs};
 
-// use super::shared::{OrderStatus, PaymentTokenType, TokenMetadataOnChain, APT_COIN};
+use super::shared::NftV1TokenId;
 
-// #[derive(Clone, Debug, Deserialize, Serialize)]
-// pub struct BidPlacedEventOnChain {
-//     pub token_offer: String,
-//     pub purchaser: String,
-//     pub price: String,
-//     pub token_metadata: TokenMetadataOnChain,
-// }
+// Tradeport v1 InsertTokenBidEvent
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct BidPlacedEventOnChain {
+    pub timestamp: String,
+    pub nonce: String,
+    pub bid_buyer: String,
+    pub token_id: NftV1TokenId,
+    pub price: String,
+}
 
-// #[derive(Clone, Debug, Deserialize, Serialize)]
-// pub struct BidFilledEventOnChain {
-//     pub token_offer: String,
-//     pub purchaser: String,
-//     pub seller: String,
-//     pub price: String,
-//     pub royalties: String,
-//     pub commission: String,
-//     pub token_metadata: TokenMetadataOnChain,
-// }
+// Tradeport v1 AcceptTokenBidEvent
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TradeportV1BidFilledEventOnChain {
+    pub timestamp: String,
+    pub nonce: String,
+    pub bid_buyer: String,
+    pub bid_seller: String,
+    pub token_id: NftV1TokenId,
+    pub price: String,
+}
 
-// #[derive(Clone, Debug, Deserialize, Serialize)]
-// pub struct BidCancelledEventOnChain {
-//     pub token_offer: String,
-//     pub purchaser: String,
-//     pub price: String,
-//     pub token_metadata: TokenMetadataOnChain,
-// }
+// Tradeport v1 DeleteTokenBidEvent
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct BidCancelledEventOnChain {
+    pub timestamp: String,
+    pub nonce: String,
+    pub bid_buyer: String,
+    pub token_id: NftV1TokenId,
+    pub price: String,
+}
 
 // impl BidPlacedEventOnChain {
 //     pub fn to_db_nft_bid(
