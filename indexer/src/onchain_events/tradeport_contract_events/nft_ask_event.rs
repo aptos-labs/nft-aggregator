@@ -1,7 +1,10 @@
 use aptos_indexer_processor_sdk::utils::convert::standardize_address;
 use serde::{Deserialize, Serialize};
 
-use crate::{db_models::nft_asks::NftAsk, utils::{aptos_utils::NftV1TokenId, time_utils::get_unix_timestamp_in_secs}};
+use crate::{
+    db_models::nft_asks::NftAsk,
+    utils::{aptos_utils::NftV1TokenId, time_utils::get_unix_timestamp_in_secs},
+};
 
 // Tradeport v1 InsertListingEvent
 #[derive(Clone, Debug, Deserialize, Serialize)]
