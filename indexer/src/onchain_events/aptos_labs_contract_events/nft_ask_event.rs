@@ -101,14 +101,12 @@ impl AskFilledEventOnChain {
     ) -> NftAsk {
         NftAsk {
             ask_obj_addr: standardize_address(self.listing.as_str()),
-            nft_id: self.token_metadata.get_id(),
-            nft_name: self.token_metadata.token_name.clone(),
-            collection_addr: self.token_metadata.get_collection_addr().clone(),
-            collection_creator_addr: standardize_address(
-                self.token_metadata.creator_address.as_str(),
-            ),
-            collection_name: self.token_metadata.collection_name.clone(),
-            nft_standard: self.token_metadata.get_nft_standard(),
+            nft_id: "".to_string(),
+            nft_name: "".to_string(),
+            collection_addr: "".to_string(),
+            collection_creator_addr: "".to_string(),
+            collection_name: "".to_string(),
+            nft_standard: 0,
             marketplace_addr,
             buyer_addr: standardize_address(self.purchaser.as_str()),
             seller_addr: standardize_address(self.seller.as_str()),
@@ -141,14 +139,12 @@ impl AskCancelledEventOnChain {
     ) -> NftAsk {
         NftAsk {
             ask_obj_addr: standardize_address(self.listing.as_str()),
-            nft_id: self.token_metadata.get_id(),
-            nft_name: self.token_metadata.token_name.clone(),
-            collection_addr: self.token_metadata.get_collection_addr().clone(),
-            collection_creator_addr: standardize_address(
-                self.token_metadata.creator_address.as_str(),
-            ),
-            collection_name: self.token_metadata.collection_name.clone(),
-            nft_standard: self.token_metadata.get_nft_standard(),
+            nft_id: "".to_string(),
+            nft_name: "".to_string(),
+            collection_addr: "".to_string(),
+            collection_creator_addr: "".to_string(),
+            collection_name: "".to_string(),
+            nft_standard: 0,
             marketplace_addr,
             buyer_addr: "".to_string(),
             seller_addr: standardize_address(self.seller.as_str()),
