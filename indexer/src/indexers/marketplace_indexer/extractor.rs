@@ -11,13 +11,20 @@ use aptos_indexer_processor_sdk::{
 use async_trait::async_trait;
 use rayon::prelude::*;
 
-use crate::db_models::{
-    collection_bids::{
-        CollectionBid, CollectionBidCancelledEventOnChain, CollectionBidFilledEventOnChain,
-        CollectionBidPlacedEventOnChain, FilledCollectionBid,
+use crate::{
+    db_models::{
+        collection_bids::{CollectionBid, FilledCollectionBid},
+        nft_asks::NftAsk,
+        nft_bids::NftBid,
     },
-    nft_asks::{AskCancelledEventOnChain, AskFilledEventOnChain, AskPlacedEventOnChain, NftAsk},
-    nft_bids::{BidCancelledEventOnChain, BidFilledEventOnChain, BidPlacedEventOnChain, NftBid},
+    onchain_events::aptos_labs_contract_events::{
+        collection_bid_event::{
+            CollectionBidCancelledEventOnChain, CollectionBidFilledEventOnChain,
+            CollectionBidPlacedEventOnChain,
+        },
+        nft_ask_event::{AskCancelledEventOnChain, AskFilledEventOnChain, AskPlacedEventOnChain},
+        nft_bid_event::{BidCancelledEventOnChain, BidFilledEventOnChain, BidPlacedEventOnChain},
+    },
 };
 
 /// Extractor is a step that extracts events and their metadata from transactions.

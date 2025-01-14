@@ -1,3 +1,4 @@
+pub mod aptos_utils;
 pub mod chain_id;
 pub mod database_connection;
 pub mod database_execution;

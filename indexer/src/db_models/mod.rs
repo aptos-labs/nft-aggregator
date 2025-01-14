@@ -5,4 +5,3 @@ pub mod nft_asks;
 pub mod nft_bids;
 pub mod package_upgrade;
 pub mod processor_status;
-pub mod shared;
