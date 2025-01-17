@@ -3,44 +3,45 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     db_models::collection_bids::{CollectionBid, FilledCollectionBid},
-    utils::{
-        aptos_utils::{OrderStatus, PaymentTokenType, APT_COIN},
-        time_utils::get_unix_timestamp_in_secs,
-    },
+    utils::aptos_utils::{NFTStandard, OrderStatus, PaymentTokenType, APT_COIN},
 };
 
-use super::shared::{CollectionMetadataOnChain, TokenMetadataOnChain};
+use super::shared::{generate_collection_bid_order_id_for_nft_v1, NftV1CollectionId, NftV1TokenId};
 
+// Tradeport v1 InsertCollectionBidEvent
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CollectionBidPlacedEventOnChain {
-    pub collection_offer: String,
-    pub purchaser: String,
+pub struct TradeportV1CollectionBidPlacedEventOnChain {
+    pub timestamp: String,
+    pub nonce: String,
+    pub bid_buyer: String,
+    pub collection_id: NftV1CollectionId,
+    pub amount: String,
     pub price: String,
-    pub token_amount: String,
-    pub collection_metadata: CollectionMetadataOnChain,
 }
 
+// Tradeport v1 AcceptCollectionBidEvent
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CollectionBidFilledEventOnChain {
-    pub collection_offer: String,
-    pub purchaser: String,
-    pub seller: String,
+pub struct TradeportV1CollectionBidFilledEventOnChain {
+    pub timestamp: String,
+    pub nonce: String,
+    pub bid_buyer: String,
+    pub bid_seller: String,
+    pub token_id: NftV1TokenId,
     pub price: String,
-    pub royalties: String,
-    pub commission: String,
-    pub token_metadata: TokenMetadataOnChain,
 }
 
+// Tradeport v1 DeleteCollectionBidEvent
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CollectionBidCancelledEventOnChain {
-    pub collection_offer: String,
-    pub purchaser: String,
+pub struct TradeportV1CollectionBidCancelledEventOnChain {
+    pub timestamp: String,
+    pub nonce: String,
+    pub bid_buyer: String,
+    pub collection_id: NftV1CollectionId,
+    pub amount: String,
     pub price: String,
-    pub remaining_token_amount: String,
-    pub collection_metadata: CollectionMetadataOnChain,
 }
 
-impl CollectionBidPlacedEventOnChain {
+impl TradeportV1CollectionBidPlacedEventOnChain {
     pub fn to_db_collection_bid(
         &self,
         marketplace_addr: String,
@@ -48,20 +49,20 @@ impl CollectionBidPlacedEventOnChain {
         event_idx: i64,
     ) -> CollectionBid {
         CollectionBid {
-            bid_obj_addr: standardize_address(self.collection_offer.as_str()),
-            collection_addr: self.collection_metadata.get_collection_addr().clone(),
+            bid_obj_addr: generate_collection_bid_order_id_for_nft_v1(self.nonce.clone()),
+            collection_addr: "".to_string(),
             collection_creator_addr: standardize_address(
-                self.collection_metadata.creator_address.as_str(),
+                self.collection_id.collection_creator.as_str(),
             ),
-            collection_name: self.collection_metadata.collection_name.clone(),
-            nft_standard: self.collection_metadata.get_nft_standard(),
+            collection_name: self.collection_id.collection_name.clone(),
+            nft_standard: NFTStandard::V1 as i32,
             marketplace_addr,
-            total_nft_amount: self.token_amount.parse().unwrap(),
-            buyer_addr: standardize_address(self.purchaser.as_str()),
+            total_nft_amount: self.amount.parse().unwrap(),
+            buyer_addr: standardize_address(self.bid_buyer.as_str()),
             price: self.price.parse().unwrap(),
             payment_token: APT_COIN.to_string(),
             payment_token_type: PaymentTokenType::Coin as i32,
-            order_placed_timestamp: get_unix_timestamp_in_secs(),
+            order_placed_timestamp: self.timestamp.parse().unwrap(),
             order_placed_tx_version: tx_version,
             order_placed_event_idx: event_idx,
             latest_order_filled_timestamp: 0,
@@ -76,33 +77,30 @@ impl CollectionBidPlacedEventOnChain {
     }
 }
 
-impl CollectionBidFilledEventOnChain {
+impl TradeportV1CollectionBidFilledEventOnChain {
     pub fn to_db_collection_bid_and_filled_collection_bid(
         &self,
         marketplace_addr: String,
         tx_version: i64,
         event_idx: i64,
     ) -> (CollectionBid, FilledCollectionBid) {
-        let time_now = get_unix_timestamp_in_secs();
         (
             CollectionBid {
-                bid_obj_addr: standardize_address(self.collection_offer.as_str()),
-                collection_addr: self.token_metadata.get_collection_addr().clone(),
-                collection_creator_addr: standardize_address(
-                    self.token_metadata.creator_address.as_str(),
-                ),
-                collection_name: self.token_metadata.collection_name.clone(),
-                nft_standard: self.token_metadata.get_nft_standard(),
+                bid_obj_addr: generate_collection_bid_order_id_for_nft_v1(self.nonce.clone()),
+                collection_addr: "".to_string(),
+                collection_creator_addr: "".to_string(),
+                collection_name: "".to_string(),
+                nft_standard: 1,
                 marketplace_addr,
                 total_nft_amount: 0,
-                buyer_addr: standardize_address(self.purchaser.as_str()),
+                buyer_addr: standardize_address(self.bid_buyer.as_str()),
                 price: self.price.parse().unwrap(),
                 payment_token: APT_COIN.to_string(),
                 payment_token_type: PaymentTokenType::Coin as i32,
                 order_placed_timestamp: 0,
                 order_placed_tx_version: 0,
                 order_placed_event_idx: 0,
-                latest_order_filled_timestamp: time_now,
+                latest_order_filled_timestamp: self.timestamp.parse().unwrap(),
                 latest_order_filled_tx_version: tx_version,
                 latest_order_filled_event_idx: event_idx,
                 order_cancelled_timestamp: 0,
@@ -112,14 +110,14 @@ impl CollectionBidFilledEventOnChain {
                 order_expiration_timestamp: 0,
             },
             FilledCollectionBid {
-                bid_obj_addr: standardize_address(self.collection_offer.as_str()),
-                nft_id: self.token_metadata.get_id(),
-                nft_name: self.token_metadata.token_name.clone(),
-                seller_addr: standardize_address(self.seller.as_str()),
+                bid_obj_addr: generate_collection_bid_order_id_for_nft_v1(self.nonce.clone()),
+                nft_id: self.token_id.property_version.clone(),
+                nft_name: self.token_id.token_data_id.name.clone(),
+                seller_addr: standardize_address(self.bid_seller.as_str()),
                 price: self.price.parse().unwrap(),
-                royalties: self.royalties.parse().unwrap(),
-                commission: self.commission.parse().unwrap(),
-                order_filled_timestamp: time_now,
+                royalties: 0,
+                commission: 0,
+                order_filled_timestamp: self.timestamp.parse().unwrap(),
                 order_filled_tx_version: tx_version,
                 order_filled_event_idx: event_idx,
             },
@@ -127,7 +125,7 @@ impl CollectionBidFilledEventOnChain {
     }
 }
 
-impl CollectionBidCancelledEventOnChain {
+impl TradeportV1CollectionBidCancelledEventOnChain {
     pub fn to_db_collection_bid(
         &self,
         marketplace_addr: String,
@@ -135,16 +133,14 @@ impl CollectionBidCancelledEventOnChain {
         event_idx: i64,
     ) -> CollectionBid {
         CollectionBid {
-            bid_obj_addr: standardize_address(self.collection_offer.as_str()),
-            collection_addr: self.collection_metadata.get_collection_addr().clone(),
-            collection_creator_addr: standardize_address(
-                self.collection_metadata.creator_address.as_str(),
-            ),
-            collection_name: self.collection_metadata.collection_name.clone(),
-            nft_standard: self.collection_metadata.get_nft_standard(),
+            bid_obj_addr: generate_collection_bid_order_id_for_nft_v1(self.nonce.clone()),
+            collection_addr: "".to_string(),
+            collection_creator_addr: "".to_string(),
+            collection_name: "".to_string(),
+            nft_standard: 1,
             marketplace_addr,
             total_nft_amount: 0,
-            buyer_addr: standardize_address(self.purchaser.as_str()),
+            buyer_addr: standardize_address(self.bid_buyer.as_str()),
             price: self.price.parse().unwrap(),
             payment_token: APT_COIN.to_string(),
             payment_token_type: PaymentTokenType::Coin as i32,
@@ -154,7 +150,7 @@ impl CollectionBidCancelledEventOnChain {
             latest_order_filled_timestamp: 0,
             latest_order_filled_tx_version: 0,
             latest_order_filled_event_idx: 0,
-            order_cancelled_timestamp: get_unix_timestamp_in_secs(),
+            order_cancelled_timestamp: self.timestamp.parse().unwrap(),
             order_cancelled_tx_version: tx_version,
             order_cancelled_event_idx: event_idx,
             order_status: OrderStatus::Cancelled as i32,
