@@ -35,6 +35,8 @@ pub enum ProcessorConfig {
     ContractUpgradeIndexer,
     RaribleMarketplaceIndexer,
     WapalMarketplaceIndexer,
+    TradeportMarketplaceV1Indexer,
+    TradeportMarketplaceV2Indexer,
 }
 
 impl ProcessorConfig {
@@ -62,6 +64,8 @@ pub enum Processor {
     ContractUpgradeIndexer,
     RaribleMarketplaceIndexer,
     WapalMarketplaceIndexer,
+    TradeportMarketplaceV1Indexer,
+    TradeportMarketplaceV2Indexer,
 }
 
 #[cfg(test)]

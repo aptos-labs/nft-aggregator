@@ -27,15 +27,6 @@ pub struct TradeportV1AskUpdatedEventOnChain {
     pub owner: String,
 }
 
-// Tradeport v1 DeleteListingEvent
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct TradeportV1AskCancelledEventOnChain {
-    pub timestamp: String,
-    pub token_id: NftV1TokenId,
-    pub price: String,
-    pub owner: String,
-}
-
 // Tradeport v1 BuyEvent
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TradeportV1AskFilledEventOnChain {
@@ -44,6 +35,15 @@ pub struct TradeportV1AskFilledEventOnChain {
     pub price: String,
     pub owner: String,
     pub buyer: String,
+}
+
+// Tradeport v1 DeleteListingEvent
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TradeportV1AskCancelledEventOnChain {
+    pub timestamp: String,
+    pub token_id: NftV1TokenId,
+    pub price: String,
+    pub owner: String,
 }
 
 impl TradeportV1AskPlacedEventOnChain {
