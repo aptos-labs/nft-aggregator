@@ -39,10 +39,11 @@ WORKDIR /usr/src/app
 COPY --from=builder /usr/src/app/target/x86_64-unknown-linux-gnu/release/indexer .
 
 # Copy the configuration file
-COPY configs/contract_upgrade_indexer_config.yaml /secrets/config
+COPY configs/contract_upgrade_indexer_config.yaml /secrets/contract_upgrade_config
+COPY configs/marketplace_indexer_config.yaml /secrets/marketplace_config
 
 # Expose the port your application is using
 EXPOSE 8080
 
-# Set the command to run the application
-CMD ["./indexer", "-c", "/secrets/config"]
+# Set the binary as entrypoint so we can pass config as argument
+ENTRYPOINT ["./indexer", "-c"]

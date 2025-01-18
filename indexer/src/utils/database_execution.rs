@@ -1,10 +1,13 @@
+use aptos_indexer_processor_sdk::utils::errors::ProcessorError;
 use diesel::{
     debug_query,
     pg::Pg,
     query_builder::{QueryFragment, QueryId},
+    result::Error as DieselError,
     QueryResult,
 };
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
+use futures_util::future;
 
 pub async fn execute_with_better_error<U>(
     conn: &mut AsyncPgConnection,
@@ -31,4 +34,20 @@ where
         tracing::error!("Error running query: {:?}\n{:?}", e, debug_query);
     }
     res
+}
+pub async fn handle_db_execution(
+    tasks: Vec<tokio::task::JoinHandle<Result<(), DieselError>>>,
+) -> Result<(), ProcessorError> {
+    let results = future::try_join_all(tasks)
+        .await
+        .expect("Task panicked executing in chunks");
+    for res in results {
+        res.map_err(|e| {
+            tracing::warn!("Error running query: {:?}", e);
+            ProcessorError::ProcessError {
+                message: e.to_string(),
+            }
+        })?;
+    }
+    Ok(())
 }

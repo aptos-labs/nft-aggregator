@@ -4,6 +4,9 @@ server_config:
     type: "marketplace_indexer"
   transaction_stream_config:
     indexer_grpc_data_service_address: "https://grpc.mainnet.aptoslabs.com:443"
+    # rarible starting version: 1011760686
+    # wapal starting version:    216804176
+    # tradeport starting version: 94194505
     starting_version: 1
     # request_ending_version: 10000
     auth_token: ""
@@ -16,7 +19,7 @@ server_config:
     # see limitation on vercel docs https://vercel.com/docs/storage/vercel-postgres/faq
     db_pool_size: 25
   custom_config:
-    contract_upgrade_indexer: [
+    marketplace_indexer: [
         # wapal
         "0x584b50b999c78ade62f8359c91b5165ff390338d45f8e55969a04e65d76258c9",
         # tradeport

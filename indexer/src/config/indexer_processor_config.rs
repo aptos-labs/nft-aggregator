@@ -4,7 +4,10 @@ use aptos_indexer_processor_sdk_server_framework::RunnableConfig;
 use serde::{Deserialize, Serialize};
 
 use super::processor_config::ProcessorConfig;
-use crate::indexers::contract_upgrade_indexer::processor::ContractUpgradeProcessor;
+use crate::indexers::{
+    contract_upgrade_indexer::processor::ContractUpgradeProcessor,
+    marketplace_indexer::processor::MarketplaceProcessor,
+};
 
 pub const QUERY_DEFAULT_RETRIES: u32 = 5;
 pub const QUERY_DEFAULT_RETRY_DELAY_MS: u64 = 500;
@@ -23,11 +26,20 @@ impl RunnableConfig for IndexerProcessorConfig {
     async fn run(&self) -> Result<()> {
         match self.processor_config {
             ProcessorConfig::ContractUpgradeIndexer => {
-                let events_processor = ContractUpgradeProcessor::new(self.clone()).await?;
-                events_processor.run_processor().await
+                let processor = ContractUpgradeProcessor::new(self.clone()).await?;
+                processor.run_processor().await
             }
-            ProcessorConfig::MarketplaceIndexer => {
-                return Err(anyhow::anyhow!("MarketplaceIndexer not implemented"));
+            ProcessorConfig::WapalMarketplaceIndexer => {
+                let processor = MarketplaceProcessor::new(self.clone()).await?;
+                processor.run_processor().await
+            }
+            ProcessorConfig::RaribleMarketplaceIndexer => {
+                let processor = MarketplaceProcessor::new(self.clone()).await?;
+                processor.run_processor().await
+            }
+            ProcessorConfig::TradeportMarketplaceIndexer => {
+                let processor = MarketplaceProcessor::new(self.clone()).await?;
+                processor.run_processor().await
             }
         }
     }

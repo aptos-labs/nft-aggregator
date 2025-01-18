@@ -11,7 +11,7 @@ use aptos_indexer_processor_sdk::{
 use async_trait::async_trait;
 use rayon::prelude::*;
 
-use crate::db_models::contract_upgrade_indexer::{
+use crate::db_models::{
     module_upgrade::ModuleUpgrade,
     package_upgrade::{PackageUpgrade, PackageUpgradeChangeOnChain},
 };
@@ -56,7 +56,13 @@ impl Processable for Extractor {
             .map(|txn| {
                 let txn_version = txn.version as i64;
                 let txn_info = match txn.info.as_ref() {
-                    Some(info) => info,
+                    Some(info) => {
+                        if info.success {
+                            info
+                        } else {
+                            return (vec![], vec![]);
+                        }
+                    }
                     None => {
                         tracing::warn!(
                             transaction_version = txn_version,
