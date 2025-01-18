@@ -8,7 +8,7 @@ use diesel::{
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 
 use crate::{
-    db_models::collection_bids::{CollectionBid, FilledCollectionBid},
+    db_models::{collection_bids::CollectionBid, filled_collection_bids::FilledCollectionBid},
     schema::{collection_bids, filled_collection_bids},
     utils::{
         database_connection::get_db_connection,

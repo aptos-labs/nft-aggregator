@@ -1,4 +1,5 @@
 pub mod collection_bids;
+pub mod filled_collection_bids;
 pub mod ledger_info;
 pub mod module_upgrade;
 pub mod nft_asks;

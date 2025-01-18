@@ -12,8 +12,7 @@ use async_trait::async_trait;
 use rayon::prelude::*;
 
 use crate::db_models::{
-    collection_bids::{CollectionBid, FilledCollectionBid},
-    nft_asks::NftAsk,
+    collection_bids::CollectionBid, filled_collection_bids::FilledCollectionBid, nft_asks::NftAsk,
     nft_bids::NftBid,
 };
 

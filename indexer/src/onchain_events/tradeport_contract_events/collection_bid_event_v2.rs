@@ -2,7 +2,7 @@ use aptos_indexer_processor_sdk::utils::convert::standardize_address;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    db_models::collection_bids::{CollectionBid, FilledCollectionBid},
+    db_models::{collection_bids::CollectionBid, filled_collection_bids::FilledCollectionBid},
     onchain_events::aptos_labs_contract_events::shared::MoveObject,
     utils::aptos_utils::{NFTStandard, OrderStatus, PaymentTokenType, APT_COIN},
 };
