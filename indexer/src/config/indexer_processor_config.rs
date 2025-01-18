@@ -37,11 +37,7 @@ impl RunnableConfig for IndexerProcessorConfig {
                 let processor = MarketplaceProcessor::new(self.clone()).await?;
                 processor.run_processor().await
             }
-            ProcessorConfig::TradeportMarketplaceV1Indexer => {
-                let processor = MarketplaceProcessor::new(self.clone()).await?;
-                processor.run_processor().await
-            }
-            ProcessorConfig::TradeportMarketplaceV2Indexer => {
+            ProcessorConfig::TradeportMarketplaceIndexer => {
                 let processor = MarketplaceProcessor::new(self.clone()).await?;
                 processor.run_processor().await
             }
