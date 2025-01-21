@@ -61,28 +61,8 @@ pub async fn process_ask_cancelled_events(
     per_table_chunk_sizes: AHashMap<String, usize>,
     events: Vec<NftAsk>,
 ) -> Result<(), ProcessorError> {
-    // for tradeport v1, order identifier can be duplicated if user buy, sell and buy again
-    // since there aren't much v1 nft left, we save some effort and only keep the latest order
-    let mut unique_events_map: AHashMap<String, NftAsk> = AHashMap::new();
-    for event in events {
-        if let Some(existing_event) = unique_events_map.get_mut(&event.ask_obj_addr) {
-            if event.order_cancelled_tx_version > existing_event.order_cancelled_tx_version
-                || event.order_cancelled_tx_version == existing_event.order_cancelled_tx_version
-                    && event.order_cancelled_event_idx > existing_event.order_cancelled_event_idx
-            {
-                *existing_event = event;
-            }
-        } else {
-            unique_events_map.insert(event.ask_obj_addr.clone(), event);
-        }
-    }
-    let unique_events = unique_events_map
-        .into_iter()
-        .map(|(_, v)| v)
-        .collect::<Vec<_>>();
-
     let chunk_size = get_config_table_chunk_size::<NftAsk>("nft_asks", &per_table_chunk_sizes);
-    let tasks = unique_events
+    let tasks = events
         .chunks(chunk_size)
         .map(|chunk| {
             let pool = pool.clone();
@@ -99,10 +79,7 @@ pub async fn process_ask_cancelled_events(
     match handle_db_execution(tasks).await {
         Ok(_) => Ok(()),
         Err(e) => {
-            println!(
-                "error writing ask cancelled events to db: {:?}",
-                unique_events
-            );
+            println!("error writing ask cancelled events to db: {:?}", events);
             Err(e)
         }
     }
