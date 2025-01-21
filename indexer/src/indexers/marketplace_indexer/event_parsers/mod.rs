@@ -1,3 +1,2 @@
 pub mod aptos_labs_contract_event_parser;
-pub mod tradeport_contract_v1_event_parser;
 pub mod tradeport_contract_v2_event_parser;
