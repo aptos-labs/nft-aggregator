@@ -66,9 +66,9 @@ pub async fn process_ask_cancelled_events(
     let mut unique_events_map: AHashMap<String, NftAsk> = AHashMap::new();
     for event in events {
         if let Some(existing_event) = unique_events_map.get_mut(&event.ask_obj_addr) {
-            if event.order_placed_tx_version > existing_event.order_placed_tx_version
-                || event.order_placed_tx_version == existing_event.order_placed_tx_version
-                    && event.order_placed_event_idx > existing_event.order_placed_event_idx
+            if event.order_cancelled_tx_version > existing_event.order_cancelled_tx_version
+                || event.order_cancelled_tx_version == existing_event.order_cancelled_tx_version
+                    && event.order_cancelled_event_idx > existing_event.order_cancelled_event_idx
             {
                 *existing_event = event;
             }
