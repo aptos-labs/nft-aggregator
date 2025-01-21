@@ -25,7 +25,8 @@ pub fn parse_from_tradeport_v2_contract_event(
     event_addr: String,
     event_type: String,
 ) -> Option<ContractEvent> {
-    if event_type.starts_with(format!("{}::biddings_v2::InsertTokenBidEvent", event_addr).as_str()) {
+    if event_type.starts_with(format!("{}::biddings_v2::InsertTokenBidEvent", event_addr).as_str())
+    {
         println!("Tradeport v2 InsertTokenBidEvent {}", event.data.as_str());
         let parsed_event: TradeportV2BidPlacedEventOnChain =
             serde_json::from_str(event.data.as_str()).unwrap_or_else(|_| {
