@@ -128,7 +128,7 @@ impl TradeportV2CollectionBidCancelledEventOnChain {
         event_idx: i64,
     ) -> CollectionBid {
         CollectionBid {
-            bid_obj_addr: standardize_address(self.collection.inner.as_str()),
+            bid_obj_addr: standardize_address(self.bid.inner.as_str()),
             collection_addr: "".to_string(),
             collection_creator_addr: "".to_string(),
             collection_name: "".to_string(),
