@@ -1,12 +1,13 @@
 health_check_port: 8085
 server_config:
   processor_config:
-    type: "marketplace_indexer"
+    # change to the marketplace you want to index, e.g. tradeport_marketplace_indexer
+    type: "my_marketplace_indexer"
   transaction_stream_config:
     indexer_grpc_data_service_address: "https://grpc.mainnet.aptoslabs.com:443"
     # rarible starting version: 1011760686
     # wapal starting version:    216804176
-    # tradeport starting version: 94194505
+    # tradeport v2 starting version:  207153331
     starting_version: 1
     # request_ending_version: 10000
     auth_token: ""
