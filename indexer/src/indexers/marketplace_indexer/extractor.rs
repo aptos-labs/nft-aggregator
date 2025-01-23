@@ -18,7 +18,6 @@ use crate::db_models::{
 
 use super::event_parsers::{
     aptos_labs_contract_event_parser::parse_from_aptos_labs_contract_event,
-    tradeport_contract_v1_event_parser::parse_from_tradeport_v1_contract_event,
     tradeport_contract_v2_event_parser::parse_from_tradeport_v2_contract_event,
 };
 
@@ -154,15 +153,6 @@ impl ContractEvent {
                 event_addr.clone(),
                 event_type.clone(),
             )
-            .or_else(|| {
-                parse_from_tradeport_v1_contract_event(
-                    event_idx,
-                    event,
-                    txn_version,
-                    event_addr.clone(),
-                    event_type.clone(),
-                )
-            })
             .or_else(|| {
                 parse_from_tradeport_v2_contract_event(
                     event_idx,

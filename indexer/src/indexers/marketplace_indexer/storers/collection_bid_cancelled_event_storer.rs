@@ -81,8 +81,8 @@ pub async fn process_collection_bid_cancelled_events(
         Ok(_) => Ok(()),
         Err(e) => {
             println!(
-                "error writing collection bid cancelled events to db: {:?}",
-                events
+                "error writing collection bid cancelled events to db: {:?} with error: {:?}",
+                events, e
             );
             Err(e)
         }

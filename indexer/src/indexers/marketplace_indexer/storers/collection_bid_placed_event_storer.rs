@@ -64,6 +64,7 @@ pub async fn process_collection_bid_placed_events(
     per_table_chunk_sizes: AHashMap<String, usize>,
     events: Vec<CollectionBid>,
 ) -> Result<(), ProcessorError> {
+    // when order is updated, contract also emits an order placed event, so we need to deduplicate the events
     let mut unique_events_map: AHashMap<String, CollectionBid> = AHashMap::new();
     for event in events {
         if let Some(existing_event) = unique_events_map.get_mut(&event.bid_obj_addr) {
@@ -102,8 +103,8 @@ pub async fn process_collection_bid_placed_events(
         Ok(_) => Ok(()),
         Err(e) => {
             println!(
-                "error writing collection bid placed events to db: {:?}",
-                unique_events
+                "error writing collection bid placed events to db: {:?} with error: {:?}",
+                unique_events, e
             );
             Err(e)
         }

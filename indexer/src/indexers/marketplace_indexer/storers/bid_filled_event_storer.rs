@@ -80,7 +80,10 @@ pub async fn process_bid_filled_events(
     match handle_db_execution(tasks).await {
         Ok(_) => Ok(()),
         Err(e) => {
-            println!("error writing bid filled events to db: {:?}", events);
+            println!(
+                "error writing bid filled events to db: {:?} with error: {:?}",
+                events, e
+            );
             Err(e)
         }
     }

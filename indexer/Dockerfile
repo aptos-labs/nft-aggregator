@@ -38,9 +38,11 @@ WORKDIR /usr/src/app
 # Copy the compiled binary from the builder image
 COPY --from=builder /usr/src/app/target/x86_64-unknown-linux-gnu/release/indexer .
 
-# Copy the configuration file
-COPY configs/contract_upgrade_indexer_config.yaml /secrets/contract_upgrade_config
-COPY configs/marketplace_indexer_config.yaml /secrets/marketplace_config
+# uncomment to run locally
+# Copy the contract upgrade configuration file
+# COPY configs/contract_upgrade_indexer_config.yaml /secrets/contract_upgrade_config
+# Copy the marketplace configuration file
+# COPY configs/pick_a_marketplace_indexer_config.yaml /secrets/marketplace_config
 
 # Expose the port your application is using
 EXPOSE 8080
