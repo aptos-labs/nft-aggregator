@@ -167,8 +167,8 @@ pub async fn process_collection_bid_filled_events(
         Ok(_) => Ok(()),
         Err(e) => {
             println!(
-                "error writing collection bid filled events to db: {:?}",
-                collection_bids
+                "error writing collection bid filled events to db: {:?} with error: {:?}",
+                collection_bids, e
             );
             Err(e)
         }

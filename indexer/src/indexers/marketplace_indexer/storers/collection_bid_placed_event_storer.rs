@@ -103,8 +103,8 @@ pub async fn process_collection_bid_placed_events(
         Ok(_) => Ok(()),
         Err(e) => {
             println!(
-                "error writing collection bid placed events to db: {:?}",
-                unique_events
+                "error writing collection bid placed events to db: {:?} with error: {:?}",
+                unique_events, e
             );
             Err(e)
         }

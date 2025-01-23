@@ -80,7 +80,10 @@ pub async fn process_ask_filled_events(
     match handle_db_execution(tasks).await {
         Ok(_) => Ok(()),
         Err(e) => {
-            println!("error writing ask filled events to db: {:?}", events);
+            println!(
+                "error writing ask filled events to db: {:?} with error: {:?}",
+                events, e
+            );
             Err(e)
         }
     }

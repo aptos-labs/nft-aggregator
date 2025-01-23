@@ -97,7 +97,10 @@ pub async fn process_ask_placed_events(
     match handle_db_execution(tasks).await {
         Ok(_) => Ok(()),
         Err(e) => {
-            println!("error writing ask placed events to db: {:?}", unique_events);
+            println!(
+                "error writing ask placed events to db: {:?} with error: {:?}",
+                unique_events, e
+            );
             Err(e)
         }
     }
