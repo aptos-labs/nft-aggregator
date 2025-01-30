@@ -2,9 +2,12 @@ use aptos_indexer_processor_sdk::utils::convert::standardize_address;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    db_models::{collection_bids::CollectionBid, filled_collection_bids::FilledCollectionBid},
+    db_models::{
+        activities::Activity, collection_bids::CollectionBid,
+        filled_collection_bids::FilledCollectionBid,
+    },
     utils::{
-        aptos_utils::{OrderStatus, PaymentTokenType, APT_COIN},
+        aptos_utils::{ActivityType, OrderStatus, PaymentTokenType, APT_COIN},
         time_utils::get_unix_timestamp_in_secs,
     },
 };
@@ -46,33 +49,58 @@ impl CollectionBidPlacedEventOnChain {
         marketplace_addr: String,
         tx_version: i64,
         event_idx: i64,
-    ) -> CollectionBid {
-        CollectionBid {
-            bid_obj_addr: standardize_address(self.collection_offer.as_str()),
-            collection_addr: self.collection_metadata.get_collection_addr().clone(),
-            collection_creator_addr: standardize_address(
-                self.collection_metadata.creator_address.as_str(),
-            ),
-            collection_name: self.collection_metadata.collection_name.clone(),
-            nft_standard: self.collection_metadata.get_nft_standard(),
-            marketplace_addr,
-            total_nft_amount: self.token_amount.parse().unwrap(),
-            buyer_addr: standardize_address(self.purchaser.as_str()),
-            price: self.price.parse().unwrap(),
-            payment_token: APT_COIN.to_string(),
-            payment_token_type: PaymentTokenType::Coin as i32,
-            order_placed_timestamp: get_unix_timestamp_in_secs(),
-            order_placed_tx_version: tx_version,
-            order_placed_event_idx: event_idx,
-            latest_order_filled_timestamp: 0,
-            latest_order_filled_tx_version: 0,
-            latest_order_filled_event_idx: 0,
-            order_cancelled_timestamp: 0,
-            order_cancelled_tx_version: 0,
-            order_cancelled_event_idx: 0,
-            order_status: OrderStatus::Open as i32,
-            order_expiration_timestamp: 0,
-        }
+    ) -> (CollectionBid, Activity) {
+        let time_now = get_unix_timestamp_in_secs();
+        (
+            CollectionBid {
+                bid_obj_addr: standardize_address(self.collection_offer.as_str()),
+                collection_addr: self.collection_metadata.get_collection_addr().clone(),
+                collection_creator_addr: standardize_address(
+                    self.collection_metadata.creator_address.as_str(),
+                ),
+                collection_name: self.collection_metadata.collection_name.clone(),
+                nft_standard: self.collection_metadata.get_nft_standard(),
+                marketplace_addr: marketplace_addr.clone(),
+                total_nft_amount: self.token_amount.parse().unwrap(),
+                buyer_addr: standardize_address(self.purchaser.as_str()),
+                price: self.price.parse().unwrap(),
+                payment_token: APT_COIN.to_string(),
+                payment_token_type: PaymentTokenType::Coin as i32,
+                order_placed_timestamp: time_now,
+                order_placed_tx_version: tx_version,
+                order_placed_event_idx: event_idx,
+                latest_order_filled_timestamp: 0,
+                latest_order_filled_tx_version: 0,
+                latest_order_filled_event_idx: 0,
+                order_cancelled_timestamp: 0,
+                order_cancelled_tx_version: 0,
+                order_cancelled_event_idx: 0,
+                order_status: OrderStatus::Open as i32,
+                order_expiration_timestamp: 0,
+            },
+            Activity {
+                nft_id: "".to_string(),
+                nft_name: "".to_string(),
+                collection_addr: self.collection_metadata.get_collection_addr().clone(),
+                collection_creator_addr: standardize_address(
+                    self.collection_metadata.creator_address.as_str(),
+                ),
+                collection_name: self.collection_metadata.collection_name.clone(),
+                nft_standard: self.collection_metadata.get_nft_standard(),
+                marketplace_addr,
+                buyer_addr: standardize_address(self.purchaser.as_str()),
+                seller_addr: "".to_string(),
+                price: self.price.parse().unwrap(),
+                royalties: 0,
+                commission: 0,
+                payment_token: APT_COIN.to_string(),
+                payment_token_type: PaymentTokenType::Coin as i32,
+                activity_timestamp: time_now,
+                activity_tx_version: tx_version,
+                activity_event_idx: event_idx,
+                activity_type: ActivityType::CollectionBidPlaced as i32,
+            },
+        )
     }
 }
 
@@ -82,7 +110,7 @@ impl CollectionBidFilledEventOnChain {
         marketplace_addr: String,
         tx_version: i64,
         event_idx: i64,
-    ) -> (CollectionBid, FilledCollectionBid) {
+    ) -> (CollectionBid, FilledCollectionBid, Activity) {
         let time_now = get_unix_timestamp_in_secs();
         (
             CollectionBid {
@@ -93,7 +121,7 @@ impl CollectionBidFilledEventOnChain {
                 ),
                 collection_name: self.token_metadata.collection_name.clone(),
                 nft_standard: self.token_metadata.get_nft_standard(),
-                marketplace_addr,
+                marketplace_addr: marketplace_addr.clone(),
                 total_nft_amount: 0,
                 buyer_addr: standardize_address(self.purchaser.as_str()),
                 price: self.price.parse().unwrap(),
@@ -123,6 +151,28 @@ impl CollectionBidFilledEventOnChain {
                 order_filled_tx_version: tx_version,
                 order_filled_event_idx: event_idx,
             },
+            Activity {
+                nft_id: self.token_metadata.get_id(),
+                nft_name: self.token_metadata.token_name.clone(),
+                collection_addr: self.token_metadata.get_collection_addr().clone(),
+                collection_creator_addr: standardize_address(
+                    self.token_metadata.creator_address.as_str(),
+                ),
+                collection_name: self.token_metadata.collection_name.clone(),
+                nft_standard: self.token_metadata.get_nft_standard(),
+                marketplace_addr,
+                buyer_addr: standardize_address(self.purchaser.as_str()),
+                seller_addr: standardize_address(self.seller.as_str()),
+                price: self.price.parse().unwrap(),
+                royalties: self.royalties.parse().unwrap(),
+                commission: self.commission.parse().unwrap(),
+                payment_token: APT_COIN.to_string(),
+                payment_token_type: PaymentTokenType::Coin as i32,
+                activity_timestamp: time_now,
+                activity_tx_version: tx_version,
+                activity_event_idx: event_idx,
+                activity_type: ActivityType::CollectionBidFilled as i32,
+            },
         )
     }
 }
@@ -133,32 +183,56 @@ impl CollectionBidCancelledEventOnChain {
         marketplace_addr: String,
         tx_version: i64,
         event_idx: i64,
-    ) -> CollectionBid {
-        CollectionBid {
-            bid_obj_addr: standardize_address(self.collection_offer.as_str()),
-            collection_addr: self.collection_metadata.get_collection_addr().clone(),
-            collection_creator_addr: standardize_address(
-                self.collection_metadata.creator_address.as_str(),
-            ),
-            collection_name: self.collection_metadata.collection_name.clone(),
-            nft_standard: self.collection_metadata.get_nft_standard(),
-            marketplace_addr,
-            total_nft_amount: 0,
-            buyer_addr: standardize_address(self.purchaser.as_str()),
-            price: self.price.parse().unwrap(),
-            payment_token: APT_COIN.to_string(),
-            payment_token_type: PaymentTokenType::Coin as i32,
-            order_placed_timestamp: 0,
-            order_placed_tx_version: 0,
-            order_placed_event_idx: 0,
-            latest_order_filled_timestamp: 0,
-            latest_order_filled_tx_version: 0,
-            latest_order_filled_event_idx: 0,
-            order_cancelled_timestamp: get_unix_timestamp_in_secs(),
-            order_cancelled_tx_version: tx_version,
-            order_cancelled_event_idx: event_idx,
-            order_status: OrderStatus::Cancelled as i32,
-            order_expiration_timestamp: 0,
-        }
+    ) -> (CollectionBid, Activity) {
+        (
+            CollectionBid {
+                bid_obj_addr: standardize_address(self.collection_offer.as_str()),
+                collection_addr: self.collection_metadata.get_collection_addr().clone(),
+                collection_creator_addr: standardize_address(
+                    self.collection_metadata.creator_address.as_str(),
+                ),
+                collection_name: self.collection_metadata.collection_name.clone(),
+                nft_standard: self.collection_metadata.get_nft_standard(),
+                marketplace_addr: marketplace_addr.clone(),
+                total_nft_amount: 0,
+                buyer_addr: standardize_address(self.purchaser.as_str()),
+                price: self.price.parse().unwrap(),
+                payment_token: APT_COIN.to_string(),
+                payment_token_type: PaymentTokenType::Coin as i32,
+                order_placed_timestamp: 0,
+                order_placed_tx_version: 0,
+                order_placed_event_idx: 0,
+                latest_order_filled_timestamp: 0,
+                latest_order_filled_tx_version: 0,
+                latest_order_filled_event_idx: 0,
+                order_cancelled_timestamp: get_unix_timestamp_in_secs(),
+                order_cancelled_tx_version: tx_version,
+                order_cancelled_event_idx: event_idx,
+                order_status: OrderStatus::Cancelled as i32,
+                order_expiration_timestamp: 0,
+            },
+            Activity {
+                nft_id: "".to_string(),
+                nft_name: "".to_string(),
+                collection_addr: self.collection_metadata.get_collection_addr().clone(),
+                collection_creator_addr: standardize_address(
+                    self.collection_metadata.creator_address.as_str(),
+                ),
+                collection_name: self.collection_metadata.collection_name.clone(),
+                nft_standard: self.collection_metadata.get_nft_standard(),
+                marketplace_addr,
+                buyer_addr: standardize_address(self.purchaser.as_str()),
+                seller_addr: "".to_string(),
+                price: self.price.parse().unwrap(),
+                royalties: 0,
+                commission: 0,
+                payment_token: APT_COIN.to_string(),
+                payment_token_type: PaymentTokenType::Coin as i32,
+                activity_timestamp: get_unix_timestamp_in_secs(),
+                activity_tx_version: tx_version,
+                activity_event_idx: event_idx,
+                activity_type: ActivityType::CollectionBidCancelled as i32,
+            },
+        )
     }
 }

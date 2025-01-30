@@ -8,8 +8,8 @@ use diesel::{
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 
 use crate::{
-    db_models::nft_bids::NftBid,
-    schema::nft_bids,
+    db_models::{activities::Activity, nft_bids::NftBid},
+    schema::{activities, nft_bids},
     utils::{
         database_connection::get_db_connection,
         database_execution::handle_db_execution,
@@ -19,12 +19,14 @@ use crate::{
 
 async fn execute_sql(
     conn: &mut AsyncPgConnection,
-    items_to_insert: Vec<NftBid>,
+    items_to_insert: Vec<(NftBid, Activity)>,
 ) -> QueryResult<()> {
+    let (bids, activities): (Vec<NftBid>, Vec<Activity>) = items_to_insert.into_iter().unzip();
+
     conn.transaction(|conn| {
         Box::pin(async move {
-            let sql = insert_into(nft_bids::table)
-                .values(items_to_insert.clone())
+            let insert_bids = insert_into(nft_bids::table)
+                .values(bids.clone())
                 .on_conflict(nft_bids::bid_obj_addr)
                 .do_update()
                 .set((
@@ -49,7 +51,17 @@ async fn execute_sql(
                                     .lt(excluded(nft_bids::order_cancelled_event_idx)),
                             )),
                 );
-            sql.execute(conn).await?;
+            insert_bids.execute(conn).await?;
+
+            let insert_activities = insert_into(activities::table)
+                .values(activities)
+                .on_conflict((
+                    activities::activity_tx_version,
+                    activities::activity_event_idx,
+                ))
+                .do_nothing();
+            insert_activities.execute(conn).await?;
+
             Ok(())
         })
     })
@@ -59,7 +71,7 @@ async fn execute_sql(
 pub async fn process_bid_cancelled_events(
     pool: ArcDbPool,
     per_table_chunk_sizes: AHashMap<String, usize>,
-    events: Vec<NftBid>,
+    events: Vec<(NftBid, Activity)>,
 ) -> Result<(), ProcessorError> {
     let chunk_size = get_config_table_chunk_size::<NftBid>("nft_bids", &per_table_chunk_sizes);
     let tasks = events

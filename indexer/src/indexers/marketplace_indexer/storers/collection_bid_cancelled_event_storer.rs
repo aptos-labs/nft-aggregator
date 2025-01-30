@@ -8,8 +8,8 @@ use diesel::{
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 
 use crate::{
-    db_models::collection_bids::CollectionBid,
-    schema::collection_bids,
+    db_models::{activities::Activity, collection_bids::CollectionBid},
+    schema::{activities, collection_bids},
     utils::{
         database_connection::get_db_connection,
         database_execution::handle_db_execution,
@@ -19,12 +19,15 @@ use crate::{
 
 async fn execute_sql(
     conn: &mut AsyncPgConnection,
-    items_to_insert: Vec<CollectionBid>,
+    items_to_insert: Vec<(CollectionBid, Activity)>,
 ) -> QueryResult<()> {
+    let (bids, activities): (Vec<CollectionBid>, Vec<Activity>) =
+        items_to_insert.into_iter().unzip();
+
     conn.transaction(|conn| {
         Box::pin(async move {
-            let sql = insert_into(collection_bids::table)
-                .values(items_to_insert.clone())
+            let insert_bids = insert_into(collection_bids::table)
+                .values(bids.clone())
                 .on_conflict(collection_bids::bid_obj_addr)
                 .do_update()
                 .set((
@@ -49,7 +52,17 @@ async fn execute_sql(
                                     .lt(excluded(collection_bids::order_cancelled_event_idx)),
                             )),
                 );
-            sql.execute(conn).await?;
+            insert_bids.execute(conn).await?;
+
+            let insert_activities = insert_into(activities::table)
+                .values(activities)
+                .on_conflict((
+                    activities::activity_tx_version,
+                    activities::activity_event_idx,
+                ))
+                .do_nothing();
+            insert_activities.execute(conn).await?;
+
             Ok(())
         })
     })
@@ -59,7 +72,7 @@ async fn execute_sql(
 pub async fn process_collection_bid_cancelled_events(
     pool: ArcDbPool,
     per_table_chunk_sizes: AHashMap<String, usize>,
-    events: Vec<CollectionBid>,
+    events: Vec<(CollectionBid, Activity)>,
 ) -> Result<(), ProcessorError> {
     let chunk_size =
         get_config_table_chunk_size::<CollectionBid>("collection_bids", &per_table_chunk_sizes);

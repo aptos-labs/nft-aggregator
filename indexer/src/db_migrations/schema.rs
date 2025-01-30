@@ -1,6 +1,38 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    activities (activity_tx_version, activity_event_idx) {
+        #[max_length = 300]
+        nft_id -> Varchar,
+        #[max_length = 300]
+        nft_name -> Varchar,
+        #[max_length = 300]
+        collection_addr -> Varchar,
+        #[max_length = 300]
+        collection_creator_addr -> Varchar,
+        #[max_length = 300]
+        collection_name -> Varchar,
+        nft_standard -> Int4,
+        #[max_length = 300]
+        marketplace_addr -> Varchar,
+        #[max_length = 300]
+        buyer_addr -> Varchar,
+        #[max_length = 300]
+        seller_addr -> Varchar,
+        price -> Int8,
+        royalties -> Int8,
+        commission -> Int8,
+        #[max_length = 300]
+        payment_token -> Varchar,
+        payment_token_type -> Int4,
+        activity_type -> Int4,
+        activity_tx_version -> Int8,
+        activity_timestamp -> Int8,
+        activity_event_idx -> Int8,
+    }
+}
+
+diesel::table! {
     collection_bids (bid_obj_addr) {
         #[max_length = 300]
         bid_obj_addr -> Varchar,
@@ -184,6 +216,7 @@ diesel::table! {
 diesel::joinable!(filled_collection_bids -> collection_bids (bid_obj_addr));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    activities,
     collection_bids,
     filled_collection_bids,
     ledger_infos,

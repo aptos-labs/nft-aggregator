@@ -1,3 +1,4 @@
+pub mod activities;
 pub mod collection_bids;
 pub mod filled_collection_bids;
 pub mod ledger_info;

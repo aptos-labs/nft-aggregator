@@ -32,10 +32,16 @@ use serde::{Deserialize, Serialize};
     strum(serialize_all = "snake_case")
 )]
 pub enum ProcessorConfig {
+    // For contract upgrade
     ContractUpgradeIndexer,
+    // For rarible marketplace
     RaribleMarketplaceIndexer,
+    // For wapal marketplace
     WapalMarketplaceIndexer,
+    // For tradeport marketplace
     TradeportMarketplaceIndexer,
+    // For backfilling data
+    BackfillMarketplaceIndexer,
 }
 
 impl ProcessorConfig {
@@ -64,6 +70,7 @@ pub enum Processor {
     RaribleMarketplaceIndexer,
     WapalMarketplaceIndexer,
     TradeportMarketplaceIndexer,
+    BackfillMarketplaceIndexer,
 }
 
 #[cfg(test)]

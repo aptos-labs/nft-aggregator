@@ -21,3 +21,15 @@ pub enum AskOrderType {
     FixedPrice = 1,
     Auction = 2,
 }
+
+pub enum ActivityType {
+    CollectionBidPlaced = 1,
+    CollectionBidFilled = 2,
+    CollectionBidCancelled = 3,
+    NFTBidPlaced = 4,
+    NFTBidFilled = 5,
+    NFTBidCancelled = 6,
+    NFTAskPlaced = 7,
+    NFTAskFilled = 8,
+    NFTAskCancelled = 9,
+}

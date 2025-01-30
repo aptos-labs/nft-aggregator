@@ -101,11 +101,8 @@ impl Processable for Storer {
                     ContractEvent::CollectionBidPlacedEvent(collection_bid) => {
                         collection_bid_placed_events.push(collection_bid)
                     }
-                    ContractEvent::CollectionBidFilledEvent((
-                        collection_bid,
-                        filled_collection_bid,
-                    )) => {
-                        collection_bid_filled_events.push((collection_bid, filled_collection_bid))
+                    ContractEvent::CollectionBidFilledEvent(filled_collection_bid) => {
+                        collection_bid_filled_events.push(filled_collection_bid)
                     }
                     ContractEvent::CollectionBidCancelledEvent(collection_bid) => {
                         collection_bid_cancelled_events.push(collection_bid)

@@ -8,8 +8,8 @@ use diesel::{
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 
 use crate::{
-    db_models::nft_asks::NftAsk,
-    schema::nft_asks,
+    db_models::{activities::Activity, nft_asks::NftAsk},
+    schema::{activities, nft_asks},
     utils::{
         database_connection::get_db_connection,
         database_execution::handle_db_execution,
@@ -19,12 +19,14 @@ use crate::{
 
 async fn execute_sql(
     conn: &mut AsyncPgConnection,
-    items_to_insert: Vec<NftAsk>,
+    items_to_insert: Vec<(NftAsk, Activity)>,
 ) -> QueryResult<()> {
+    let (asks, activities): (Vec<NftAsk>, Vec<Activity>) = items_to_insert.into_iter().unzip();
+
     conn.transaction(|conn| {
         Box::pin(async move {
-            let sql = insert_into(nft_asks::table)
-                .values(items_to_insert.clone())
+            let insert_asks = insert_into(nft_asks::table)
+                .values(asks.clone())
                 .on_conflict(nft_asks::ask_obj_addr)
                 .do_update()
                 .set((
@@ -48,7 +50,17 @@ async fn execute_sql(
                                     .lt(excluded(nft_asks::order_placed_event_idx)),
                             )),
                 );
-            sql.execute(conn).await?;
+            insert_asks.execute(conn).await?;
+
+            let insert_activities = insert_into(activities::table)
+                .values(activities)
+                .on_conflict((
+                    activities::activity_tx_version,
+                    activities::activity_event_idx,
+                ))
+                .do_nothing();
+            insert_activities.execute(conn).await?;
+
             Ok(())
         })
     })
@@ -58,20 +70,20 @@ async fn execute_sql(
 pub async fn process_ask_placed_events(
     pool: ArcDbPool,
     per_table_chunk_sizes: AHashMap<String, usize>,
-    events: Vec<NftAsk>,
+    events: Vec<(NftAsk, Activity)>,
 ) -> Result<(), ProcessorError> {
     // when order is updated, contract also emits an order placed event, so we need to deduplicate the events
-    let mut unique_events_map: AHashMap<String, NftAsk> = AHashMap::new();
+    let mut unique_events_map: AHashMap<String, (NftAsk, Activity)> = AHashMap::new();
     for event in events {
-        if let Some(existing_event) = unique_events_map.get_mut(&event.ask_obj_addr) {
-            if event.order_placed_tx_version > existing_event.order_placed_tx_version
-                || event.order_placed_tx_version == existing_event.order_placed_tx_version
-                    && event.order_placed_event_idx > existing_event.order_placed_event_idx
+        if let Some(existing_event) = unique_events_map.get_mut(&event.0.ask_obj_addr) {
+            if event.0.order_placed_tx_version > existing_event.0.order_placed_tx_version
+                || event.0.order_placed_tx_version == existing_event.0.order_placed_tx_version
+                    && event.0.order_placed_event_idx > existing_event.0.order_placed_event_idx
             {
                 *existing_event = event;
             }
         } else {
-            unique_events_map.insert(event.ask_obj_addr.clone(), event);
+            unique_events_map.insert(event.0.ask_obj_addr.clone(), event);
         }
     }
     let unique_events = unique_events_map

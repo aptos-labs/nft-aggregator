@@ -41,6 +41,10 @@ impl RunnableConfig for IndexerProcessorConfig {
                 let processor = MarketplaceProcessor::new(self.clone()).await?;
                 processor.run_processor().await
             }
+            ProcessorConfig::BackfillMarketplaceIndexer => {
+                let processor = MarketplaceProcessor::new(self.clone()).await?;
+                processor.run_processor().await
+            }
         }
     }
 

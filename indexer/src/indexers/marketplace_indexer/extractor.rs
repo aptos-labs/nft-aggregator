@@ -12,8 +12,7 @@ use async_trait::async_trait;
 use rayon::prelude::*;
 
 use crate::db_models::{
-    collection_bids::CollectionBid, filled_collection_bids::FilledCollectionBid, nft_asks::NftAsk,
-    nft_bids::NftBid,
+    activities::Activity, collection_bids::CollectionBid, filled_collection_bids::FilledCollectionBid, nft_asks::NftAsk, nft_bids::NftBid
 };
 
 use super::event_parsers::{
@@ -123,15 +122,15 @@ pub struct TransactionContextData {
 
 #[derive(Debug, Clone)]
 pub enum ContractEvent {
-    BidPlacedEvent(NftBid),
-    BidFilledEvent(NftBid),
-    BidCancelledEvent(NftBid),
-    AskPlacedEvent(NftAsk),
-    AskFilledEvent(NftAsk),
-    AskCancelledEvent(NftAsk),
-    CollectionBidPlacedEvent(CollectionBid),
-    CollectionBidFilledEvent((CollectionBid, FilledCollectionBid)),
-    CollectionBidCancelledEvent(CollectionBid),
+    BidPlacedEvent((NftBid, Activity)),
+    BidFilledEvent((NftBid, Activity)),
+    BidCancelledEvent((NftBid, Activity)),
+    AskPlacedEvent((NftAsk, Activity)),
+    AskFilledEvent((NftAsk, Activity)),
+    AskCancelledEvent((NftAsk, Activity)),
+    CollectionBidPlacedEvent((CollectionBid, Activity)),
+    CollectionBidFilledEvent((CollectionBid, FilledCollectionBid, Activity)),
+    CollectionBidCancelledEvent((CollectionBid, Activity)),
 }
 
 impl ContractEvent {
