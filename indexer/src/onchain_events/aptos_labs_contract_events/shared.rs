@@ -73,12 +73,17 @@ impl TokenMetadataOnChain {
     pub fn get_id(&self) -> String {
         if self.is_v1() {
             if self.property_version.vec.is_empty() {
-                panic!(
-                    "property_version should be available in v1, but it's empty now: {:?}",
-                    self
-                );
-            };
-            self.property_version.vec[0].clone()
+                if self.token_name == " burned" {
+                    return "".to_string();
+                } else {
+                    panic!(
+                        "property_version should be available in v1, but it's empty now: {:?}",
+                        self
+                    );
+                }
+            } else {
+                self.property_version.vec[0].clone()
+            }
         } else {
             standardize_address(self.token.vec[0].clone().inner.as_str())
         }
