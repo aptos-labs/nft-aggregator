@@ -73,7 +73,7 @@ impl TokenMetadataOnChain {
     pub fn get_id(&self) -> String {
         if self.is_v1() {
             if self.property_version.vec.is_empty() {
-                if self.token_name == " burned" {
+                if self.token_name == " \"burned\"" {
                     return "".to_string();
                 } else {
                     panic!(
